@@ -22,7 +22,6 @@ module memory(
 	// writing
 	always @(posedge clk) begin
 		if (write) begin    
-			//Writing logic
             if (access_size == '10') begin //32 bit access
             	buffer = data_in;
 				memory[address - offset] = buffer; //TODO: will this work, or do we need to clip the buffer to 8 bits before writing it to memory?
@@ -50,8 +49,32 @@ module memory(
 	end
 	
 	// reading
-	always @(negedge clk) begin					//full word access
-		//Reading logic
+	always @(negedge clk) begin
+        if (!write) begin
+            if (access_size == '10') begin //32 bit access
+                buffer = memory[address + 3 - offset]; //TODO: Is this correct w.r.t. the endian-ness? We have to use big endian. Need to draw out the memory to make sense of this.
+                buffer = buffer << 8;
+                buffer = memory[address + 2 - offset];
+                buffer = buffer << 8;
+                buffer = memory[address + 1 - offset];
+                buffer = buffer << 8;
+                buffer = memory[address - offset];
+                data_out = buffer;
+            end
+            
+            if (access_size == '01') begin //16 bit access
+                buffer = memory[address + 1 - offset];
+                buffer = buffer << 8;
+                buffer = memory[address - offset];
+                data_out = buffer;
+            end
+            
+            if (access_size == '00') begin //8 bit access
+                buffer = memory[address - offset];
+                data_out = buffer;
+            end
+        end
+		
 	end
 
 endmodule
