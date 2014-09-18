@@ -7,74 +7,50 @@ module memory(
 		input [1:0] access_size
 );
     reg [31:0] buffer;
-	parameter size = 1048577;
-	parameter offset = 2147614720 ;  // 0x80020000 in decimal
+	parameter size = 'h100000;
+	parameter offset = 'h80020000;
 	
-	reg [7:0] memory [0:size - 1];  //1048577 = 1MB
+	reg [7:0] memory [0:size];  //1048577 = 1MB
 	
-	initial begin
-		// Instantiate the cells so that they are all empty
-		for (i = 0; i < 1048577; i = i + 1) begin
-			memory[i] = 0;
-		end		
-	end
-	
-	// writing
-	always @(posedge clk) begin
-		if (write) begin    
-            if (access_size == '10') begin //32 bit access
-            	buffer = data_in;
-				memory[address - offset] = buffer; //TODO: will this work, or do we need to clip the buffer to 8 bits before writing it to memory?
-				buffer = buffer >> 8;
-				memory[address - offset + 1] = buffer;
-				buffer = buffer >> 8;
-				memory[address - offset + 2] = buffer;
-				buffer = buffer >> 8;
-				memory[address - offset + 3] = buffer;
-            end
-            
-            if (access_size == '01') begin //16 bit access 
-                buffer = data_in;
-                memory[address - offset] = buffer;
-                buffer = buffer >> 8;
-                memory[address - offser + 1] = buffer;
-            end
-            
-            if (access_size == '00') begin //8 bit access
-                buffer = data_in;
-                memory[address - offset] = buffer;
-            end
-		end
-		
-	end
-	
-	// reading
+    always @(posedge clk) begin // on the positive edge we will clear the value of the data_out line
+        data_out = 32'h00000000;
+    end
+    // On every negative edge of the clock cycle we will write/read values into memory based the address that was set on the rising edge.
 	always @(negedge clk) begin
-        if (!write) begin
-            if (access_size == '10') begin //32 bit access
-                buffer = memory[address + 3 - offset]; //TODO: Is this correct w.r.t. the endian-ness? We have to use big endian. Need to draw out the memory to make sense of this.
-                buffer = buffer << 8;
-                buffer = memory[address + 2 - offset];
-                buffer = buffer << 8;
-                buffer = memory[address + 1 - offset];
-                buffer = buffer << 8;
-                buffer = memory[address - offset];
-                data_out = buffer;
+		if (write) begin // write the value from data_in into memory
+            if (access_size == 2'b10) begin //32 bit access
+				memory[address-offset] = data_in[31:24];
+				memory[(address-offset) + 1] = data_in[23:16];
+				memory[(address-offset) + 2] = data_in[15:8];
+				memory[(address-offset) + 3] = data_in[7:0];
             end
             
-            if (access_size == '01') begin //16 bit access
-                buffer = memory[address + 1 - offset];
-                buffer = buffer << 8;
-                buffer = memory[address - offset];
-                data_out = buffer;
+            if (access_size == 2'b01) begin //16 bit access 
+                memory[(address-offset)] = data_in[15:8];
+				memory[(address-offset) + 1] = data_in[7:0];
             end
             
-            if (access_size == '00') begin //8 bit access
-                buffer = memory[address - offset];
-                data_out = buffer;
+            if (access_size == 2'b00) begin //8 bit access
+                memory[(address-offset)] = data_in[7:0];
             end
         end
-		
+		else begin // Read the value into data_out
+            if (access_size == 'b10) begin //32 bit access
+                data_out[7:0] = memory[(address-offset) + 3];
+                data_out[15:8] = memory[(address-offset) + 2];
+                data_out[23:16] = memory[(address-offset) + 1];
+                data_out[31:24] = memory[(address-offset)];
+            end
+            
+            if (access_size == 'b01) begin //16 bit access
+                data_out[7:0] = memory[(address-offset) + 1];
+                data_out[15:8] = memory[(address-offset)];
+            end
+            
+            if (access_size == 'b00) begin //8 bit access
+                data_out[7:0] = memory[(address-offset)];
+            end
+        end
 	end
 
 endmodule
