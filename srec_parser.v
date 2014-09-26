@@ -110,7 +110,7 @@ module srec_parser;
                 end else if (record_code > 3) begin
                    
                    if (rec_type == 1) begin // If the record type is for a 16 bit address.
-                        rec_address[31:16] = 8'h0000
+                        rec_address[31:16] = 16'h0000;
                         if (record_code == 4) begin
                             // read the middle byte of the address.
                             temp = atoh(file_char);
@@ -153,8 +153,8 @@ module srec_parser;
                         end
                     end    
                     
-                    if (rec_type == 2) begin // If the record type is for a 32 bit address.
-                        rec_address[31:24] = 8'h00
+                    if (rec_type == 2) begin // If the record type is for a 24 bit address.
+                        rec_address[31:24] = 8'h00;
                         if (record_code == 4) begin
                             temp = atoh(file_char);
                             rec_address[23:20] = temp[3:0];

@@ -50,8 +50,6 @@ module memory_tb;
 		// Start giving inputs here
 		
         // We want to test writing an value to address 0x80020000 for a program instruction
-        $monitor("Testing writing a 32 bit value to the first memory location in the instruction address space...\n");
-        $monitor("Writing the value 0x98765432 to first address in instruction address space...\n");
         // Set the address line on the rising edge;
         address = instruction_offset+0;
         write = 1;
@@ -59,41 +57,32 @@ module memory_tb;
         // Set the data line on the falling edge;
         data_in = 32'h98765432;
         access_size = 2'b10;
+        write = 1;
         #50;
-        
-        #100; // wait 1 clock cycle.
          
-        $monitor("Testing reading the 32 bit value from the first memory location in the instruction address space...\n");
         address = instruction_offset+0;
         write = 0;
         access_size = 2'b10;
         #50; // delay until falling edge
         // read the data line on the falling edge;
-        $monitor("The 32 bit value in the first instruction address space is 0x%h\n", data_out);
         #50;
         
-        $monitor("Testing reading the 16 bit value from the first memory location in the instruction address space...\n");
         address = instruction_offset+0;
         write = 0;
         access_size = 2'b01;
         #50; // delay until falling edge
         // read the data line on the falling edge;
-        $monitor("The 16 bit value in the first instruction address space is 0x%h\n", data_out[15:0]);
         #50;
         
-        $monitor("Testing reading the 8 bit value from the first memory location in the instruction address space...\n");
         address = instruction_offset+0;
         write = 0;
         access_size = 2'b00;
         #50; // delay until falling edge
         // read the data line on the falling edge;
-        $monitor("The 8 bit value in the first instruction address space is 0x%h\n", data_out[7:0]);
         #50;
         
         // Now we are going to test writing a 16-bit value and then reading it back.
         // We want to test writing an value to address 0x80020008 for a program instruction
-        $monitor("Testing writing a 16 bit value into memory...\n");
-        $monitor("Writing the value 0xAAAA to address 0x80020008...\n");
         // Set the address line on the rising edge;
         address = instruction_offset+8;
         write = 1;
@@ -102,22 +91,16 @@ module memory_tb;
         data_in = 16'hAAAA;
         access_size = 2'b01;
         #50;
-        
-        #100; // wait 1 clock cycle.
          
-        $monitor("Testing reading the 16 bit value from 0x80020008...\n");
         address = instruction_offset+8;
         write = 0;
         access_size = 2'b01;
         #50; // delay until falling edge
         // read the data line on the falling edge;
-        $monitor("The 16 bit value is 0x%h\n", data_out);
         #50;
         
         // Now we are going to test writing a 8-bit value and then reading it back.
         // We want to test writing an value to address 0x8002000D for a program instruction
-        $monitor("Testing writing a 8 bit value into memory...\n");
-        $monitor("Writing the value 0xBB to address 0x8002000D...\n");
         // Set the address line on the rising edge;
         address = instruction_offset+12;
         write = 1;
@@ -127,15 +110,11 @@ module memory_tb;
         access_size = 2'b00;
         #50;
         
-        #100; // wait 1 clock cycle.
-         
-        $monitor("Testing reading the 8 bit value from 0x8002000D...\n");
         address = instruction_offset+12;
         write = 0;
         access_size = 2'b00;
         #50; // delay until falling edge
         // read the data line on the falling edge;
-        $monitor("The 8 bit value is 0x%h\n", data_out);
         #50;
         
 	end
