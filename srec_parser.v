@@ -116,7 +116,7 @@ module srec_parser;
                             // read the upper most byte of the address.
                             temp = atoh(file_char);
                             // remove the upper most nibble since we only have single digits to represent memory addresses
-                            rec_address[32:28] = temp[3:0];
+                            rec_address[31:28] = temp[3:0];
                         end else if (record_byte == 5) begin
                             // read the upper most byte of the address.
                             temp = atoh(file_char);
