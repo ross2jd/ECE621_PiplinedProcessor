@@ -108,49 +108,125 @@ module srec_parser;
                     temp = atoh(file_char);
                     byte_count[3:0] = temp[3:0];
                 end else if (record_code > 3) begin
-                    // TODO: Add the case for a rec_type of 1 and 2.
+                   
+                   if (rec_type == 1) begin // If the record type is for a 16 bit address.
+                        rec_address[31:16] = 8'h0000
+                        if (record_code == 4) begin
+                            // read the middle byte of the address.
+                            temp = atoh(file_char);
+                            // remove the upper most nibble since we only have single digits to represent memory addresses
+                            rec_address[15:12] = temp[3:0];
+                        end else if (record_code == 5) begin
+                            temp = atoh(file_char);
+                            rec_address[11:8] = temp[3:0];
+                        end else if (record_code == 6) begin
+                            temp = atoh(file_char);
+                            rec_address[7:4] = temp[3:0];
+                        end else if (record_code == 7) begin
+                            temp = atoh(file_char);
+                            rec_address[3:0] = temp[3:0];
+                        end else begin
+                            // Check to see if we have reached the end of the data
+                            if (data_byte < byte_count - 2 - 1) begin // Make sure we are less than the byte count minus the address size in bytes and checksum
+                                // We are reading data so we want to create a lower and an upper nibble of a byte then write it to memory when we have both.
+                                temp = atoh(file_char);
+                                rec_data = rec_data << 4;
+                                rec_data[3:0] = temp[3:0];
+                                nibble_count = nibble_count + 1;
+                                #50;
+                                if (nibble_count > 1) begin
+                                    // We have both nibbles so we should write the byte to memory
+                                    // set all the lines on the falling edge of the clock.
+                                    address = rec_address+data_offset;
+                                    data_in = rec_data;
+                                    access_size = 2'b01;
+                                    write = 1;
+                                    #100; // Delay one clock cycle
+                                    write = 0;
+                                    // update the data_offest.
+                                    data_offset = data_offset + 1;
+                                    // reset the nibble count
+                                    nibble_count = 0;
+                                    data_byte = data_byte + 1;
+                                end
+                            end
+                        end
+                    end    
+                    
+                    if (rec_type == 2) begin // If the record type is for a 32 bit address.
+                        rec_address[31:24] = 8'h00
+                        if (record_code == 4) begin
+                            temp = atoh(file_char);
+                            rec_address[23:20] = temp[3:0];
+                        end else if (record_code == 5) begin
+                            temp = atoh(file_char);
+                            rec_address[19:16] = temp[3:0];
+                        end else if (record_code == 6) begin
+                            temp = atoh(file_char);
+                            rec_address[15:12] = temp[3:0];
+                        end else if (record_code == 7) begin
+                            temp = atoh(file_char);
+                            rec_address[11:8] = temp[3:0];
+                        end else if (record_code == 8) begin
+                            temp = atoh(file_char);
+                            rec_address[7:4] = temp[3:0];
+                        end else if (record_code == 9) begin
+                            temp = atoh(file_char);
+                            rec_address[3:0] = temp[3:0];
+                        end else begin
+                            // Check to see if we have reached the end of the data
+                            if (data_byte < byte_count - 3 - 1) begin // Make sure we are less than the byte count minus the address size in bytes and checksum
+                                // We are reading data so we want to create a lower and an upper nibble of a byte then write it to memory when we have both.
+                                temp = atoh(file_char);
+                                rec_data = rec_data << 4;
+                                rec_data[3:0] = temp[3:0];
+                                nibble_count = nibble_count + 1;
+                                #50;
+                                if (nibble_count > 1) begin
+                                    // We have both nibbles so we should write the byte to memory
+                                    // set all the lines on the falling edge of the clock.
+                                    address = rec_address+data_offset;
+                                    data_in = rec_data;
+                                    access_size = 2'b00;
+                                    write = 1;
+                                    #100; // Delay one clock cycle
+                                    write = 0;
+                                    // update the data_offest.
+                                    data_offset = data_offset + 1;
+                                    // reset the nibble count
+                                    nibble_count = 0;
+                                    data_byte = data_byte + 1;
+                                end
+                            end
+                        end
+                    end
+                    
                     if (rec_type == 3) begin // If the record type is for a 32 bit address.
                         if (record_code == 4) begin
                             // read the upper most byte of the address.
                             temp = atoh(file_char);
                             // remove the upper most nibble since we only have single digits to represent memory addresses
-
                             rec_address[31:28] = temp[3:0];
                         end else if (record_code == 5) begin
-
-                            // read the upper most byte of the address.
                             temp = atoh(file_char);
-                            // remove the upper most nibble since we only have single digits to represent memory addresses
                             rec_address[27:24] = temp[3:0];
                         end else if (record_code == 6) begin
-                            // read the second upper most byte of the address.
                             temp = atoh(file_char);
-                            // remove the upper most nibble since we only have single digits to represent memory addresses
                             rec_address[23:20] = temp[3:0];
                         end else if (record_code == 7) begin
-                            // read the third upper most byte of the address.
                             temp = atoh(file_char);
-                            // remove the upper most nibble since we only have single digits to represent memory addresses
                             rec_address[19:16] = temp[3:0];
                         end else if (record_code == 8) begin
-                            // read the middle byte of the address.
                             temp = atoh(file_char);
-                            // remove the upper most nibble since we only have single digits to represent memory addresses
                             rec_address[15:12] = temp[3:0];
                         end else if (record_code == 9) begin
-                            // read the third lowest most byte of the address.
                             temp = atoh(file_char);
-                            // remove the upper most nibble since we only have single digits to represent memory addresses
                             rec_address[11:8] = temp[3:0];
                         end else if (record_code == 10) begin
-                            // read the second lowest most byte of the address.
                             temp = atoh(file_char);
-                            // remove the upper most nibble since we only have single digits to represent memory addresses
                             rec_address[7:4] = temp[3:0];
                         end else if (record_code == 11) begin
-                            // read the lowest most byte of the address.
                             temp = atoh(file_char);
-                            // remove the upper most nibble since we only have single digits to represent memory addresses
                             rec_address[3:0] = temp[3:0];
                         end else begin
                             // Check to see if we have reached the end of the data
