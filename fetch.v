@@ -29,7 +29,7 @@ module fetch(
     // Parameter to define the address spaces
     parameter instruction_offset = 32'h80020000;
     
-    reg [31:0]pc; // The PC register
+    reg [31:0]pc = instruction_offset; // The PC register
     
     // Ports for main memory
     reg [31:0] mar;
@@ -47,11 +47,6 @@ module fetch(
         .clk(clk_in),
 		.access_size(access_size)
     );
-    
-    // Initialize the PC register
-    initial begin
-        pc = instruction_offset;
-    end
     
     always @(posedge clk_in) begin
         // Supply the PC to memory address input (MAR).

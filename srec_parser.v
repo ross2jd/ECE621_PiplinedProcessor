@@ -10,10 +10,12 @@
 // contents of the file and then write the appropriate data into memory at the
 // specified addresses.
 // 
-// Dependencies: memory.v
+// Dependencies: memory.v, fetch.v
 // 
 // Revision:
 // 0.01 - File Created.
+// 0.02 - Added the fetch module so after the memory has been loaded with the instructions,
+//        the fetch-decode-execute loop can begin.
 //
 // Additional Comments:
 //
@@ -47,6 +49,21 @@ module srec_parser;
     reg done = 0; // this will set high when we are done parsing the file.
     
     reg [7:0] file_char = 8'h0A;
+    
+    // Ports for testing the fetch module
+    reg stall_in;
+    wire rw_out;
+    wire [31:0] pc_out;
+	wire [1:0] access_size_out;
+    
+    // Instantiate the fetch unit under test
+    fetch fetch(
+        .clk_in(clk),
+        .stall_in(stall_in),
+        .pc_out(pc_out),
+        .rw_out(rw_out),
+        .access_size_out(access_size_out)
+    );
 	
     // Instantiate the memory module
     memory memory(.data_out(data_out),
@@ -61,7 +78,10 @@ module srec_parser;
     parameter instruction_offset = 32'h80020000;
 	
 	initial begin
-    
+        // Before we begin parsing we want to make sure the fetch module does nothing until the the memory has been
+        // populated with instructions. We will do this by setting the stall_in to 1 so nothing happens.
+        stall_in = 1;
+        
         $monitor("Starting the SREC parser...");
         
         // Open the SREC file to read
@@ -268,6 +288,17 @@ module srec_parser;
         // Close up the file
         $fclose(fh);
         $monitor("Done parsing the SREC file!");
+        
+        // ------------------------------------------------------------
+        // Memory is ready to be used after this point!
+        // ------------------------------------------------------------
+        $monitor("Beginning the fetch-decode-execute loop!");
+        
+        // Set the stall in to be 0 just read out the pc, rw, and access size.
+        stall_in = 0;
+        $monitor("PC = %h", pc_out);
+        #100;
+        
     end
     
 	always begin
