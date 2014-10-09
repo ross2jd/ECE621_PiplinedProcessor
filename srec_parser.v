@@ -284,15 +284,17 @@ module srec_parser;
                 file_char = $fgetc(fh);
             end
         end
-        
+        #100;
         // Close up the file
         $fclose(fh);
         $monitor("Done parsing the SREC file!");
+        #100;
         
         // ------------------------------------------------------------
         // Memory is ready to be used after this point!
         // ------------------------------------------------------------
         $monitor("Beginning the fetch-decode-execute loop!");
+        #100;
         
         // Set the stall in to be 0 just read out the pc, rw, and access size.
         stall_in = 0;

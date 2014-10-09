@@ -35,7 +35,6 @@ module fetch(
     reg [31:0] mar;
     reg [31:0] mdr_in;
     reg write;
-    reg clk;
 	reg [1:0] access_size;
     wire [31:0] mdr_out;
     
@@ -46,6 +45,11 @@ module fetch(
         .write(write),
         .clk(clk_in),
 		.access_size(access_size)
+    );
+    
+    // Instatiate the decoder
+    decode decoder(.insn_in(mdr_out),
+        .pc_in(pc)
     );
     
     always @(posedge clk_in) begin
