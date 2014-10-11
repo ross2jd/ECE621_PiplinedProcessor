@@ -29,9 +29,11 @@ module decode(
     reg [25:0]target = 26'hx;
     reg [5:0]opcode = 6'hx;
     
-    reg illegal_insn = 0;
+    reg illegal_insn;
     
-    always @(pc_in) begin
+    // If we only decode on the change of the instruction this should be valid
+    always @(insn_in) begin
+        illegal_insn = 0;
         opcode = insn_in[31:26];
         
         if (((opcode & 6'b111000)>> 3) == 3'h0) begin
@@ -41,10 +43,12 @@ module decode(
                 rd = insn_in[15:11];
                 sha = insn_in[10:6];
                 func = insn_in[5:0];
-            end else if (((opcode & 6'b000111)  == 3'd2) || ((opcode & 6'b000111) == 3'd2)) begin
+            end else if (((opcode & 6'b000111)  == 3'd2) || ((opcode & 6'b000111) == 3'd3)) begin
                 target = insn_in[25:0];
             end else begin
-                illegal_insn = 1;
+                rs = insn_in[25:21];
+                rt = insn_in[20:16];
+                immed = insn_in[15:0];
             end
         end else if (((opcode & 6'b111000)>> 3) == 3'd1) begin
             rs = insn_in[25:21];

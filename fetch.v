@@ -31,45 +31,19 @@ module fetch(
     
     reg [31:0]pc = instruction_offset; // The PC register
     
-    // Ports for main memory
-    reg [31:0] mar;
-    reg [31:0] mdr_in;
-    reg write;
-	reg [1:0] access_size;
-    wire [31:0] mdr_out;
-    
-    // Instantiate the main memory
-    memory memory(.data_out(mdr_out),
-        .address(mar),
-        .data_in(mdr_in), 
-        .write(write),
-        .clk(clk_in),
-		.access_size(access_size)
-    );
-    
-    // Instatiate the decoder
-    decode decoder(.insn_in(mdr_out),
-        .pc_in(pc)
-    );
-    
     always @(posedge clk_in) begin
-        // Supply the PC to memory address input (MAR).
-        mar = pc;
         pc_out = pc;
-        // Indicate that we are reading from memory of the size 32 bits
-        write = 0;
-        access_size = 2'b10;
         rw_out = 0;
         access_size_out = 2'b10;
         case(stall_in)
             0:  begin
                     // Increment the pc by 4 so we read the next 
                     // instruction on the next clock cycle.
-                    pc <= pc + 4;
+                    pc = pc + 4;
                 end
             1:  begin
                     // TODO: Stalls not implemented
-                    pc <= pc;
+                    pc = pc;
                 end
             default:    begin
                             $display("Unknown signal!");

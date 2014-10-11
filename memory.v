@@ -12,9 +12,6 @@ module memory(
 	
 	reg [7:0] memory [0:size];  //1048577 = 1MB
 	
-    always @(posedge clk) begin // on the positive edge we will clear the value of the data_out line
-        data_out = 32'h00000000;
-    end
     // On every negative edge of the clock cycle we will write/read values into memory based the address that was set on the rising edge.
 	always @(negedge clk) begin
 		if (write) begin // write the value from data_in into memory
