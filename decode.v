@@ -17,20 +17,41 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 module decode(
+    input clk,
+    input stall,
     input [31:0]insn_in,          // Instruction bits to decode
-    input [31:0]pc_in             // Program counter for the instruction.
+    input [31:0]pc_in,     // Program counter for the instruction.
+    
+    output wire [4:0]rs,
+    output wire [4:0]rt,
+    output wire [4:0]rd,
+    output wire [4:0]sha,
+    output wire [5:0]func,
+    output wire [15:0]immed,
+    output wire [25:0]target,
+    output wire [5:0]opcode,
+    output wire [31:0]pc_out,
+    output wire [31:0]insn_out
 );
-    reg [4:0]rs = 5'hx;
-    reg [4:0]rt = 5'hx;
-    reg [4:0]rd = 5'hx;
-    reg [4:0]sha = 5'hx;
-    reg [5:0]func = 6'hx;
-    reg [15:0]immed = 16'hx;
-    reg [25:0]target = 26'hx;
-    reg [5:0]opcode = 6'hx;
+    //reg illegal_insn;
+    reg [31:0] pc_in_r;
+    assign pc_out = pc_in_r;
+    assign insn_out = (stall)? 32'b0: insn_in;
     
-    reg illegal_insn;
+    assign {opcode, rs, rt, rd, sha, func} = insn_in;
+    assign target = insn_in[25:0];
+    assign immed = insn_in[15:0];
     
+    always @ (posedge clk) pc_in_r <= pc_in;
+       
+
+    //We dont need to do this part of the decode here, the decoder is only responsible
+    //for slicing up the instruction into the appropriate fields.
+    //For now the logic of 'decoding' an instruction into assembly is being done in the TB
+    //in the future that logic will go into the control unit
+    
+    
+    /*
     // If we only decode on the change of the instruction this should be valid
     always @(insn_in) begin
         illegal_insn = 0;
@@ -72,4 +93,5 @@ module decode(
             illegal_insn = 1;
         end
     end
+    */
 endmodule

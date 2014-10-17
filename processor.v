@@ -23,6 +23,18 @@ module processor(
     input clk,  // The system clock
     input srec_parse    // If the SREC parser is active or not.
 );
+    // Decoder signals 
+    wire [4:0]rs;
+    wire [4:0]rt;
+    wire [4:0]rd;
+    wire [4:0]sha;
+    wire [5:0]func;
+    wire [15:0]immed;
+    wire [25:0]target;
+    wire [5:0]opcode;
+    wire [31:0]pc_out;
+    wire [31:0]insn_out;
+
     // Control signals
     reg stall;
     wire [1:0]insn_access_size;
@@ -85,11 +97,19 @@ module processor(
     
     // Instantiate the decode module
     decode decoder(
+        .clk(clk),
+        .stall(stall),
         .insn_in(insn_data_out),
-        .pc_in(pc)
+        .pc_in(pc),
+        .rs(rs),
+        .rt(rt),
+        .rd(rd),
+        .sha(sha),
+        .func(func),
+        .immed(immed),
+        .target(target),
+        .opcode(opcode),
+        .pc_out(pc_out),
+        .insn_out(insn_out)
     );
-    
-    
-
-
 endmodule
