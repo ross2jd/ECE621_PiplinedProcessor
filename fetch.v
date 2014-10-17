@@ -39,11 +39,11 @@ module fetch(
             0:  begin
                     // Increment the pc by 4 so we read the next 
                     // instruction on the next clock cycle.
-                    pc = pc + 4;
+                    pc <= pc + 4;
                 end
             1:  begin
                     // TODO: Stalls not implemented
-                    pc = pc;
+                    pc <= pc;
                 end
             default:    begin
                             $display("Unknown signal!");
