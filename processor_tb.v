@@ -350,11 +350,11 @@ module processor_tb;
                 6'd1: begin //BLTZ, BGEZ
                     case(processor_uut.rt)
                     5'd0: begin //BLTZ
-                        $strobe("%h:    %h    bltz  %h, %d",
+                        $strobe("%h:    %h    bltz  %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.immed);
                     end
                     5'd1: begin //BGEZ
-                        $strobe("%h:    %h    bgez  %h, %d",
+                        $strobe("%h:    %h    bgez  %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.immed);
                     end
                     default: begin
@@ -364,27 +364,29 @@ module processor_tb;
                     endcase
                 end
                 6'd2: begin //J
+                    //display the destination address of the jump, not the offset.
                     $strobe("%h:    %h    j  %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.target);
+                            processor_uut.pc_out, processor_uut.insn_out, {processor_uut.pc_out[31-:4], 28'b0}+{processor_uut.target,2'b0});
                 end
                 6'd3: begin //JAL
+                    //display the destination address of the jump, not the offset.
                     $strobe("%h:    %h    jal  %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.target);
+                            processor_uut.pc_out, processor_uut.insn_out, {processor_uut.pc_out[31-:4], 28'b0}+{processor_uut.target,2'b0});
                 end
                 6'd4: begin //BEQ
-                    $strobe("%h:    %h    beq  %h, %h, %d",
+                    $strobe("%h:    %h    beq  %h, %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.rt, processor_uut.immed);
                 end
                 6'd5: begin //BNE
-                    $strobe("%h:    %h    bne  %h, %h, %d",
+                    $strobe("%h:    %h    bne  %h, %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.rt, processor_uut.immed);
                 end
                 6'd6: begin //BLEZ
-                    $strobe("%h:    %h    beq  %h, %d",
+                    $strobe("%h:    %h    beq  %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.immed);
                 end
                 6'd7: begin //BGTZ
-                    $strobe("%h:    %h    bgtz  %h, %d",
+                    $strobe("%h:    %h    bgtz  %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.immed);
                 end
                 6'd9: begin //ADDIU
@@ -392,15 +394,15 @@ module processor_tb;
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.rs, processor_uut.immed);
                 end
                 6'd10: begin //SLTI
-                    $strobe("%h:    %h    slti  %h, %h, %d",
+                    $strobe("%h:    %h    slti  %h, %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.rs, processor_uut.immed);
                 end
                 6'd13: begin //ORI
-                    $strobe("%h:    %h    ori  %h, %h, %d",
+                    $strobe("%h:    %h    ori  %h, %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.rs, processor_uut.immed);
                 end
                 6'd15: begin //LUI
-                    $strobe("%h:    %h    lui  %h, %d",
+                    $strobe("%h:    %h    lui  %h, %h",
                             processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.immed);
                 end
                 6'd28: begin //MUL
