@@ -42,6 +42,7 @@ module processor(
     wire fetch_rw;
     wire insn_rw;
     reg reg_file_write_enable;
+    reg [5:0]alu_op;
     
     // Address lines
     wire [31:0]pc;
@@ -68,6 +69,7 @@ module processor(
     wire [31:0]exe_A;
     wire [31:0]exe_B;
     wire [31:0]exe_O;
+    wire exe_zero;
     
     // Instantiate mux's for each of the SREC registers to aid the SREC parser.
     mux_2_1_32_bit srec_insn_address_mux(
@@ -161,9 +163,18 @@ module processor(
         .B_out(exe_B)
     );
 
+    alu alu(
+        .op1(exe_A), // operand 1 (always from rs)
+        .op2(exe_B), // operand 2
+        .operation(alu_op), // The arithmatic operation to perform
+        .result(exe_O), // The arithmatic result based on the operation
+        .zero(exe_zero) // Indicates if the result of the operation is zero.
+    );
+    
     // Control
     always @(posedge clk) begin
         reg_file_write_enable = 0; // TODO: Change this later
+        alu_op = 0; // TODO: Change this later
     end
 
 endmodule

@@ -24,6 +24,6 @@ add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_O
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_pc
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_ir
-
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_zero
 
 run 217900 ns
