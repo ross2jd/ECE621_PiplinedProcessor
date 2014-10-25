@@ -42,7 +42,6 @@ module processor(
     wire fetch_rw;
     wire insn_rw;
     reg reg_file_write_enable;
-    reg [5:0]alu_op;
     
     // Address lines
     wire [31:0]pc;
@@ -62,6 +61,11 @@ module processor(
     wire [31:0]decode_ir; // We define this as the current instruction being decoded
     wire [31:0]dec_A;
     wire [31:0]dec_B;
+    wire [31:0]dest_reg;
+
+    // Decode control signals
+    reg dest_reg_sel;
+
 
     // Execute wires
     wire [31:0]exe_pc; // We define this as the PC for next instruction to be executed
@@ -69,7 +73,11 @@ module processor(
     wire [31:0]exe_A;
     wire [31:0]exe_B;
     wire [31:0]exe_O;
+    wire [31:0]exe_extended; // The wire the comes for the sign extender
     wire exe_zero;
+
+    // Execute control signals
+    reg [5:0]alu_op;
     
     // Instantiate mux's for each of the SREC registers to aid the SREC parser.
     mux_2_1_32_bit srec_insn_address_mux(
@@ -120,13 +128,21 @@ module processor(
         .ir_out(decode_ir)
     );
 
+    // Instantiate a mux for selecting which destination to choose
+    mux_2_1_5_bit dest_reg_mux(
+        .line0(rt),
+        .line1(rd),
+        .select(dest_reg_sel), // TODO: Implement this control singal
+        .output_line(dest_reg)
+    );
+
     // Instantiate the register file
     reg_file reg_file(
         .clk(clk),
         .write_enable(reg_file_write_enable),
         .source1(rs),
-        .source2(rt), // TODO: Change this to select the appropriate value with cntrl sig
-        .dest(rd),    // TODO: Ditto above todo
+        .source2(rt),
+        .dest(dest_reg),
         .destVal(exe_O), // TODO: Change this to be the output from WB stage
         .s1val(dec_A),
         .s2val(dec_B)
@@ -163,6 +179,11 @@ module processor(
         .B_out(exe_B)
     );
 
+    sign_extender sign_extender(
+        .in_data(exe_ir[15:0]),
+        .out_data(exe_extended)
+    );
+
     alu alu(
         .op1(exe_A), // operand 1 (always from rs)
         .op2(exe_B), // operand 2
@@ -175,6 +196,12 @@ module processor(
     always @(posedge clk) begin
         reg_file_write_enable = 0; // TODO: Change this later
         alu_op = 0; // TODO: Change this later
+
+        // If it is an I-type instruction
+        //      dest_reg_sel = 1;
+        // Else
+        //      dest_reg_sel = 0;
+
     end
 
 endmodule
