@@ -4,7 +4,7 @@
 //
 // Created Date: 21/10/2014
 // Design Name:
-// Module Name: alu
+// Module Name: sign_extender
 // Project Name: ECE621_PipelinedProcessor
 // Description: This module is for the sign extension of a 16-bit number to a 
 // 32-bit number
@@ -22,6 +22,6 @@ module sign_extender(
 	output reg [31:0] out_data
 );
 	always @(in_data) begin
-		out_data[31:0] <= { {8{in_data[15]}}, in_data[15:0] };
+		out_data[31:0] <= { {16{in_data[15]}}, in_data[15:0] };
 	end	
 endmodule

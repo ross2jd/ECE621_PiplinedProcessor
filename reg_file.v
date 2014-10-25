@@ -34,6 +34,7 @@ module reg_file(
 		// This is where we will do our writes
 		if (write_enable == 1'b1) begin
 			register[dest] = destVal;
+			register[0] = 0; // r0 is always 0
 		end
 	end
 

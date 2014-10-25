@@ -27,6 +27,7 @@ module alu(
 	input [31:0] op1, // operand 1 (always from rs)
 	input [31:0] op2, // operand 2
 	input [5:0] operation, // The arithmatic operation to perform
+	input [5:0] shift_amount, // The number of bits to shift
 	output reg [31:0] result, // The arithmatic result based on the operation
 	output reg zero // Indicates if the result of the operation is zero.
 );
@@ -35,15 +36,17 @@ module alu(
 	// 1: Subtraction
 	// 2: Multiply
 	// 3: Divide
-	// 4: Shift logical left (assumes the shift amount is in operand 2)
-	// 5: Shift logical right (assumes the shift amount is in operand 2)
+	// 4: Shift logical left
+	// 5: Shift logical right 
 	// 6: Set on less than
 	// 7: And
 	// 8: Or
 	// 9: Xor
 	// 10: Nor
+	// 11: SRA
+	// 12: Load upper
 
-	always @(op1 or op2 or operation) begin
+	always @(op1 or op2 or operation or shift_amount) begin
 		case (operation) 
 			0: result = op1+op2;
 			1: result = op1-op2;
@@ -54,15 +57,15 @@ module alu(
 				end
 				// TODO: Otherwise we should trap here
 			end
-			4: result = op1 << op2;
-			5: result = op1 >> op2;
+			4: result = op2 << shift_amount;
+			5: result = op2 >> shift_amount;
 			6: result = op1 < op2 ? 1 : 0;
 			7: result = op1 & op2;
 			8: result = op1 | op2;
 			9: result = op1 ^ op2;
 			10: result = ~(op1 | op2);
-			11: result = op1 >>> op2;
-			//11: SRA the upper most bit is duplicated
+			11: result = op2 >>> shift_amount;
+			12: result = (op2 << 16)&32'hffff0000;
 		endcase
 		zero = result == 0 ? 1 : 0;
 	end	

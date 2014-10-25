@@ -28,6 +28,7 @@ module alu_tb;
         .op1(op1), // operand 1 (always from rs)
         .op2(op2), // operand 2
         .operation(operation), // The arithmatic operation to perform
+        .shift_amount(op2[5:0]),
         .result(result),
         .zero(zero)
     );
@@ -72,6 +73,9 @@ module alu_tb;
         operation = 11;
         $strobe("%b >>> %b = %b", op1, op2, result);
         #100;
+        operation = 12;
+        $strobe("LUI %b = %b", op2, result);
+        #100;
         op1 = 2;
         op2 = 1;
         operation = 0;
@@ -109,6 +113,9 @@ module alu_tb;
         #100;
         operation = 11;
         $strobe("%b >>> %b = %b", op1, op2, result);
+        #100;
+        operation = 12;
+        $strobe("LUI %b = %b", op2, result);
         #100;
         op1 = 3;
         op2 = 2;
@@ -148,6 +155,9 @@ module alu_tb;
         operation = 11;
         $strobe("%b >>> %b = %b", op1, op2, result);
         #100;
+        operation = 12;
+        $strobe("LUI %b = %b", op2, result);
+        #100;
         op1 = -1000;
         op2 = 4;
         operation = 0;
@@ -185,6 +195,9 @@ module alu_tb;
         #100;
         operation = 11;
         $strobe("%b >>> %b = %b", op1, op2, result);
+        #100;
+        operation = 12;
+        $strobe("LUI %b = %b", op2, result);
         #100;
 	end
     always begin

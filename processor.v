@@ -61,10 +61,15 @@ module processor(
     wire [31:0]decode_ir; // We define this as the current instruction being decoded
     wire [31:0]dec_A;
     wire [31:0]dec_B;
-    wire [31:0]dest_reg;
+    wire [4:0]dest_reg;
 
     // Decode control signals
     reg dest_reg_sel;
+    reg dec_illegal_insn;
+    reg [5:0] dec_alu_op;
+    reg dec_is_branch;
+    reg dec_op2_sel;
+    reg [5:0] dec_shift_amount;
 
 
     // Execute wires
@@ -72,12 +77,17 @@ module processor(
     wire [31:0]exe_ir; // We define this as the current instruction being executied    
     wire [31:0]exe_A;
     wire [31:0]exe_B;
+   	wire [31:0]exe_op2;
     wire [31:0]exe_O;
     wire [31:0]exe_extended; // The wire the comes for the sign extender
     wire exe_zero;
+    wire [5:0] exe_alu_op;
+    wire exe_is_branch;
+    wire exe_op2_sel;
+    wire [5:0] exe_shift_amount;
 
     // Execute control signals
-    reg [5:0]alu_op;
+    
     
     // Instantiate mux's for each of the SREC registers to aid the SREC parser.
     mux_2_1_32_bit srec_insn_address_mux(
@@ -120,7 +130,7 @@ module processor(
     );
 
     // Instatiate the IF/ID pipeline register to kep the PC and IR
-    if_id_pipleliner_reg if_id_pipleliner_reg(
+    if_id_pipleline_reg if_id_pipleline_reg(
         .clk(clk),
         .pc_in(pc),
         .ir_in(insn_data_out),
@@ -166,17 +176,25 @@ module processor(
         .insn_out(insn_out)
     );
 
-    // Instatiate the ID/IX pipeline register to kep the PC and IR
+    // Instatiate the ID/IX pipeline register
     id_ix_pipleline_reg id_ix_pipleline_reg(
         .clk(clk),
         .pc_in(decode_pc),
         .ir_in(decode_ir),
         .A_in(dec_A),
         .B_in(dec_B),
+        .alu_op_in(dec_alu_op),
+        .is_branch_in(dec_is_branch),
+        .op2_sel_in(dec_op2_sel),
+        .shift_amount_in(dec_shift_amount),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
         .A_out(exe_A),
-        .B_out(exe_B)
+        .B_out(exe_B),
+        .alu_op_out(exe_alu_op),
+        .is_branch_out(exe_is_branch),
+        .op2_sel_out(exe_op2_sel),
+        .shift_amount_out(exe_shift_amount)
     );
 
     sign_extender sign_extender(
@@ -184,10 +202,19 @@ module processor(
         .out_data(exe_extended)
     );
 
+    // Instantiate a 32-bit mux for selecting which operand to provide to op2 of the ALU
+    mux_2_1_32_bit alu_op2_sel_mux(
+        .line0(exe_B),
+        .line1(exe_extended),
+        .select(exe_op2_sel),
+        .output_line(exe_op2)
+    );
+
     alu alu(
         .op1(exe_A), // operand 1 (always from rs)
-        .op2(exe_B), // operand 2
-        .operation(alu_op), // The arithmatic operation to perform
+        .op2(exe_op2), // operand 2
+        .operation(exe_alu_op), // The arithmatic operation to perform
+        .shift_amount(exe_shift_amount), // The number of bits to shift
         .result(exe_O), // The arithmatic result based on the operation
         .zero(exe_zero) // Indicates if the result of the operation is zero.
     );
@@ -195,12 +222,86 @@ module processor(
     // Control
     always @(posedge clk) begin
         reg_file_write_enable = 0; // TODO: Change this later
-        alu_op = 0; // TODO: Change this later
-
-        // If it is an I-type instruction
-        //      dest_reg_sel = 1;
-        // Else
-        //      dest_reg_sel = 0;
+        
+        
+        // ----------- Decode Stage Control Signal Logic --------------------------- //
+        dec_illegal_insn = 0;
+        dest_reg_sel = 0;
+        dec_alu_op = 0;
+        dec_op2_sel = 0;
+        if (((opcode & 6'b111000)>> 3) == 3'h0) begin
+            if ((opcode & 6'b000111) == 3'h0) begin
+            	// We are in the SPECIAL Opcode encoding table
+            	// This is an R-type instruction
+            	dest_reg_sel = 0;
+            	if (func == 6'b100000 || func == 6'b100001) // ADD, ADDU
+            		dec_alu_op = 0; // Do an add operation
+            	else if (func == 6'b100010 || func == 6'b100011) // SUB, SUBU
+            		dec_alu_op = 1;
+            	else if (func == 6'b011000 || func == 6'b011001) // MULT, MULTU
+            		dec_alu_op = 2;
+            	else if (func == 6'b011010 || func == 6'b011011) // DIV, DIVU
+            		dec_alu_op = 3;
+            	else if (func == 6'b000000) begin // SLL
+            		dec_alu_op = 4;
+            		dec_shift_amount = sha;
+            	end
+            	else if (func == 6'b000010) begin // SLL
+            		dec_alu_op = 5;
+            		dec_shift_amount = sha;
+            	end
+            	else if (func == 6'b101010 || func == 6'b101011) // SLT, SLTU
+            		dec_alu_op = 6;
+                else begin
+                	dec_illegal_insn = 1;
+                end
+            end else if (((opcode & 6'b000111)  == 3'd2) || ((opcode & 6'b000111) == 3'd3)) begin
+            	// J and JAL instructions
+            	// This is J-type instruction
+            	dest_reg_sel = 0;
+            	dec_illegal_insn = 1;
+            end else begin
+            	// BEQ, BNE, BLEZ, BGTZ
+            	// This is an I-type instruction
+            	dec_alu_op = 1; // We want to do a subtraction and see if it is zero or not.
+            	dest_reg_sel = 1;
+            	dec_is_branch = 1;
+            	dec_illegal_insn = 1;
+            end
+        end else if (((opcode & 6'b111000)>> 3) == 3'd1) begin
+        	// ADDI, ADDIU, SLTI, SLTIU, ANDI, ORI, XORI, LUI
+        	// This is an I-type instruction
+        	case (opcode)
+        		6'b001000: dec_alu_op = 0;  // ADDI
+        		6'b001001: dec_alu_op = 0;  // ADDIU
+        		6'b001010: dec_alu_op = 6;  // SLTI
+        		6'b001011: dec_alu_op = 6;  // SLTUI
+        		6'b001100: dec_alu_op = 7;  // ANDI
+        		6'b001101: dec_alu_op = 8;  // ORI
+        		6'b001110: dec_alu_op = 9;  // XORI
+        		6'b001111: dec_alu_op = 12; // LUI
+        	endcase
+        	dest_reg_sel = 1;
+        	dec_op2_sel = 1; // We want op2 to be the immediate in the ALU
+        end else if (((opcode & 6'b111000)>> 3) == 3'd3) begin
+        	// No idea?
+        	dest_reg_sel = 0;
+        	dec_illegal_insn = 1;
+        end else if (((opcode & 6'b111000)>> 3) == 3'd4) begin
+        	// LB, LH, LWL, LW, LBU, LHU, LWR
+        	// This is an I-type instruction
+    		dest_reg_sel = 1;
+        	dec_op2_sel = 1;
+        	dec_alu_op = 0; // We want to add the value of rs to the immediate
+        end else if (((opcode & 6'b111000)>> 3) == 3'd5) begin
+        	// SB, SH, SWL, SW, SWR
+			// This is an I-type instruction
+    		dest_reg_sel = 1;
+        	dec_op2_sel = 1;
+        	dec_alu_op = 0; // We want to add the value of rs to the immediate
+        end else begin
+            dec_illegal_insn = 1;
+        end
 
     end
 
