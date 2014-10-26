@@ -29,7 +29,8 @@ module alu(
 	input [5:0] operation, // The arithmatic operation to perform
 	input [5:0] shift_amount, // The number of bits to shift
 	output reg [31:0] result, // The arithmatic result based on the operation
-	output reg zero // Indicates if the result of the operation is zero.
+	output reg zero, // Indicates if the result of the operation is zero.
+	output reg neg // Indicates if the result is negative or not.
 );
 	// The operations that the ALU supports are:
 	// 0: Addition TODO: Is there a difference here with unisgned vs. signed?
@@ -68,5 +69,6 @@ module alu(
 			12: result = (op2 << 16)&32'hffff0000;
 		endcase
 		zero = result == 0 ? 1 : 0;
+		neg = result[31];
 	end	
 endmodule

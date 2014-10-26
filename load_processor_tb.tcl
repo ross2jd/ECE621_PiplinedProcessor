@@ -21,8 +21,10 @@ add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dec_i
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dest_reg_sel
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dec_alu_op
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dec_is_branch
+add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dec_is_jump
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dec_op2_sel
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dec_shift_amount
+add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dec_branch_type
 
 # Execute Stage (Green)
 add wave -position insertpoint -radix decimal -color green sim:/processor_tb/processor_uut/exe_A
@@ -32,10 +34,19 @@ add wave -position insertpoint -radix decimal -color green sim:/processor_tb/pro
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_pc
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_ir
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_zero
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_neg
 add wave -position insertpoint -radix decimal -color green sim:/processor_tb/processor_uut/exe_extended
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_alu_op
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_is_branch
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_is_jump
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_op2_sel
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_shift_amount
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_shift_immed
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_shift_target
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_branch_effective_address
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_jump_effective_address
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_branch_type
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_branch_taken
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_next_pc
 
 run 217900 ns

@@ -29,16 +29,20 @@ module id_ix_pipleline_reg(
     input [31:0]B_in,
     input [5:0]alu_op_in,
     input is_branch_in,
+    input is_jump_in,
     input op2_sel_in,
     input [5:0]shift_amount_in,
+    input [1:0]branch_type_in,
     output reg [31:0]pc_out,
     output reg [31:0]ir_out,
     output reg [31:0]A_out,
     output reg [31:0]B_out,
     output reg [5:0]alu_op_out,
     output reg is_branch_out,
+    output reg is_jump_out,
     output reg op2_sel_out,
-    output reg [5:0]shift_amount_out
+    output reg [5:0]shift_amount_out,
+    output reg [1:0]branch_type_out
 );
 
     always @(negedge clk) begin
@@ -50,6 +54,8 @@ module id_ix_pipleline_reg(
         alu_op_out = alu_op_in;
         op2_sel_out = op2_sel_in;
         is_branch_out = is_branch_in;
+        is_jump_out = is_jump_in;
         shift_amount_out = shift_amount_in;
+        branch_type_out = branch_type_in;
     end
 endmodule

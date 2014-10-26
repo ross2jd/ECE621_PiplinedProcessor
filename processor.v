@@ -70,7 +70,8 @@ module processor(
     reg dec_is_branch;
     reg dec_op2_sel;
     reg [5:0] dec_shift_amount;
-
+    reg [1:0]dec_branch_type; // 0-BEQ, 1-BNE, 2-BLEZ, 3-BGTZ
+    reg dec_is_jump;
 
     // Execute wires
     wire [31:0]exe_pc; // We define this as the PC for next instruction to be executed
@@ -85,6 +86,17 @@ module processor(
     wire exe_is_branch;
     wire exe_op2_sel;
     wire [5:0] exe_shift_amount;
+    wire [31:0] exe_shift_immed;
+    wire [31:0] exe_shift_target;
+    wire [31:0] exe_jump_effective_address;
+    wire [31:0] exe_branch_effective_address;
+    wire exe_neg;
+    wire [1:0]exe_branch_type;
+    wire exe_branch_taken;
+    wire [31:0]exe_next_pc;
+    wire [31:0]exe_branch_next_pc;
+    wire exe_is_jump;
+
 
     // Execute control signals
     
@@ -185,22 +197,31 @@ module processor(
         .B_in(dec_B),
         .alu_op_in(dec_alu_op),
         .is_branch_in(dec_is_branch),
+        .is_jump_in(dec_is_jump),
         .op2_sel_in(dec_op2_sel),
         .shift_amount_in(dec_shift_amount),
+        .branch_type_in(dec_branch_type),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
         .A_out(exe_A),
         .B_out(exe_B),
         .alu_op_out(exe_alu_op),
         .is_branch_out(exe_is_branch),
+        .is_jump_out(exe_is_jump),
         .op2_sel_out(exe_op2_sel),
-        .shift_amount_out(exe_shift_amount)
+        .shift_amount_out(exe_shift_amount),
+        .branch_type_out(exe_branch_type)
     );
 
     sign_extender sign_extender(
         .in_data(exe_ir[15:0]),
         .out_data(exe_extended)
     );
+
+    assign exe_shift_target = exe_ir[25:0];
+    assign exe_jump_effective_address = (exe_pc & 32'hf0000000) | ((exe_shift_target << 2) & 32'h0fffffff);
+    assign exe_shift_immed = exe_extended << 2;
+    assign exe_branch_effective_address = exe_shift_immed + exe_pc;
 
     // Instantiate a 32-bit mux for selecting which operand to provide to op2 of the ALU
     mux_2_1_32_bit alu_op2_sel_mux(
@@ -216,7 +237,30 @@ module processor(
         .operation(exe_alu_op), // The arithmatic operation to perform
         .shift_amount(exe_shift_amount), // The number of bits to shift
         .result(exe_O), // The arithmatic result based on the operation
-        .zero(exe_zero) // Indicates if the result of the operation is zero.
+        .zero(exe_zero), // Indicates if the result of the operation is zero.
+        .neg(exe_neg)
+    );
+
+    branch_resolve branch_resolve(
+    	.zero(exe_zero),
+		.neg(exe_neg),
+		.branch_type(exe_branch_type),
+		.is_branch(exe_is_branch),
+		.branch_taken(exe_branch_taken) // Indicates if the branch is taken or not
+    );
+
+    mux_2_1_32_bit branch_next_pc_mux(
+        .line0(exe_pc),
+        .line1(exe_branch_effective_address),
+        .select(exe_branch_taken),
+        .output_line(exe_branch_next_pc)
+    );
+
+    mux_2_1_32_bit jump_next_pc_mux(
+        .line0(exe_branch_next_pc),
+        .line1(exe_jump_effective_address),
+        .select(exe_is_jump),
+        .output_line(exe_next_pc)
     );
     
     // Control
@@ -229,6 +273,9 @@ module processor(
         dest_reg_sel = 0;
         dec_alu_op = 0;
         dec_op2_sel = 0;
+        dec_is_branch = 0;
+        dec_is_jump = 0;
+        dec_branch_type = 0;
         if (((opcode & 6'b111000)>> 3) == 3'h0) begin
             if ((opcode & 6'b000111) == 3'h0) begin
             	// We are in the SPECIAL Opcode encoding table
@@ -259,14 +306,37 @@ module processor(
             	// J and JAL instructions
             	// This is J-type instruction
             	dest_reg_sel = 0;
-            	dec_illegal_insn = 1;
+            	dec_is_jump = 1;
+            	if (opcode == 6'b000011) begin
+            		// JAL instruction
+            		dec_illegal_insn = 1;
+            		// TODO: We need to store the return address into reg[31]
+            	end
             end else begin
             	// BEQ, BNE, BLEZ, BGTZ
             	// This is an I-type instruction
-            	dec_alu_op = 1; // We want to do a subtraction and see if it is zero or not.
-            	dest_reg_sel = 1;
             	dec_is_branch = 1;
-            	dec_illegal_insn = 1;
+            	if (opcode == 6'b000100) begin 
+            		// BEQ
+            		dec_alu_op = 1; // We want to do a test if the result is zero from a subtract
+            		dec_branch_type = 0;
+            	end else if (opcode == 6'b000101) begin
+            		// BNE
+            		dec_alu_op = 1; // We want to do a test if the result is zero from a subtract
+            		dec_branch_type = 1;
+            	end else if (opcode == 6'b000110) begin
+            		// BLEZ
+            		// TODO: Test that rt has zero in it
+            		dec_illegal_insn = 1;
+            		dec_alu_op = 0;
+            		dec_branch_type = 2;
+            	end else begin
+            		// BGTZ
+            		// TODO: Test that rt has zero in it
+            		dec_illegal_insn = 1;
+            		dec_alu_op = 0;
+            		dec_branch_type = 3;
+            	end
             end
         end else if (((opcode & 6'b111000)>> 3) == 3'd1) begin
         	// ADDI, ADDIU, SLTI, SLTIU, ANDI, ORI, XORI, LUI
