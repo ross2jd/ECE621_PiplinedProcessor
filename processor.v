@@ -23,6 +23,7 @@ module processor(
     input clk,  // The system clock
     input srec_parse    // If the SREC parser is active or not.
 );
+
     // Decoder signals 
     wire [4:0]rs;
     wire [4:0]rt;
@@ -50,7 +51,7 @@ module processor(
     wire [31:0]insn_data_out;
     wire [31:0]insn_address;
     
-    // SREC registers (only used for helping the parser write to instruction memory)
+    // SREC registers (only used for helping the parser write to instruction/data memory)
     reg [31:0]srec_address;
     reg [31:0]srec_data_in;
     reg srec_rw;
@@ -64,7 +65,7 @@ module processor(
     wire [4:0]dest_reg;
 
     // Decode control signals
-    reg dest_reg_sel;
+    reg dec_dest_reg_sel;
     reg dec_illegal_insn;
     reg [5:0] dec_alu_op;
     reg dec_is_branch;
@@ -72,6 +73,13 @@ module processor(
     reg [5:0] dec_shift_amount;
     reg [1:0]dec_branch_type; // 0-BEQ, 1-BNE, 2-BLEZ, 3-BGTZ
     reg dec_is_jump;
+    reg [1:0]dec_access_size;
+    reg dec_rw;
+    reg dec_memory_sign_extend;
+    reg dec_res_data_sel;
+    reg dec_write_to_reg;
+    reg [4:0]dec_rt;
+    reg [4:0]dec_rd;
 
     // Execute wires
     wire [31:0]exe_pc; // We define this as the PC for next instruction to be executed
@@ -96,9 +104,44 @@ module processor(
     wire [31:0]exe_next_pc;
     wire [31:0]exe_branch_next_pc;
     wire exe_is_jump;
+    wire [1:0]exe_access_size;
+    wire exe_rw;
+    wire exe_memory_sign_extend;
+    wire exe_res_data_sel;
+    wire exe_write_to_reg;
+    wire exe_dest_reg_sel;
+    wire [4:0]exe_rt;
+    wire [4:0]exe_rd;
 
+    // Memory wires
+    wire [31:0]mem_next_pc;
+    wire [31:0]mem_effective_addr;
+    wire [31:0]mem_reg_data;
+    wire [1:0]mem_data_access_size;
+    wire mem_data_rw;
+    wire [31:0]mem_data_out;
+    wire [31:0]mem_data_in;
+    wire [31:0]mem_addr_in;
+    wire [1:0]mem_access_size;
+    wire mem_rw;
+    wire mem_memory_sign_extend;
+    wire [31:0]mem_sign_extend_out;
+    wire [4:0]mem_rt;
+    wire [4:0]mem_rd;
+    wire mem_res_data_sel;
+    wire mem_write_to_reg;
+    wire mem_dest_reg_sel;
 
-    // Execute control signals
+    // Write back wires
+    wire [31:0]wb_O;
+    wire [31:0]wb_D;
+    wire wb_res_data_sel;
+    wire wb_write_to_reg;
+    wire wb_dest_reg_sel;
+    wire [31:0]wb_data;
+    wire [4:0]wb_rt;
+    wire [4:0]wb_rd;
+    wire [31:0]wb_next_pc;
     
     
     // Instantiate mux's for each of the SREC registers to aid the SREC parser.
@@ -141,6 +184,8 @@ module processor(
 		.access_size(insn_access_size)
     );
 
+// ------------------------------ DECODE STAGE --------------------------------------//
+
     // Instatiate the IF/ID pipeline register to kep the PC and IR
     if_id_pipleline_reg if_id_pipleline_reg(
         .clk(clk),
@@ -152,9 +197,9 @@ module processor(
 
     // Instantiate a mux for selecting which destination to choose
     mux_2_1_5_bit dest_reg_mux(
-        .line0(rt),
-        .line1(rd),
-        .select(dest_reg_sel), // TODO: Implement this control singal
+        .line0(wb_rt),
+        .line1(wb_rd),
+        .select(wb_dest_reg_sel),
         .output_line(dest_reg)
     );
 
@@ -165,7 +210,7 @@ module processor(
         .source1(rs),
         .source2(rt),
         .dest(dest_reg),
-        .destVal(exe_O), // TODO: Change this to be the output from WB stage
+        .destVal(wb_data),
         .s1val(dec_A),
         .s2val(dec_B)
     );
@@ -188,6 +233,8 @@ module processor(
         .insn_out(insn_out)
     );
 
+// ------------------------------ EXECUTE STAGE --------------------------------------//
+
     // Instatiate the ID/IX pipeline register
     id_ix_pipleline_reg id_ix_pipleline_reg(
         .clk(clk),
@@ -201,6 +248,12 @@ module processor(
         .op2_sel_in(dec_op2_sel),
         .shift_amount_in(dec_shift_amount),
         .branch_type_in(dec_branch_type),
+        .access_size_in(dec_access_size),
+        .rw_in(dec_rw),
+        .memory_sign_extend_in(dec_memory_sign_extend),
+        .res_data_sel_in(dec_res_data_sel),
+        .rt_in(dec_rt),
+        .rd_in(dec_rd),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
         .A_out(exe_A),
@@ -210,7 +263,13 @@ module processor(
         .is_jump_out(exe_is_jump),
         .op2_sel_out(exe_op2_sel),
         .shift_amount_out(exe_shift_amount),
-        .branch_type_out(exe_branch_type)
+        .branch_type_out(exe_branch_type),
+        .access_size_out(exe_access_size),
+        .rw_out(exe_rw),
+        .memory_sign_extend_out(mem_memory_sign_extend),
+        .res_data_sel_out(mem_res_data_sel),
+        .rt_out(exe_rt),
+        .rd_out(exe_rd)
     );
 
     sign_extender sign_extender(
@@ -262,25 +321,133 @@ module processor(
         .select(exe_is_jump),
         .output_line(exe_next_pc)
     );
+
+// ------------------------------ MEMORY STAGE --------------------------------------//
     
+    // Instatiate the IX/IM pipeline register
+    ix_im_pipleline_reg ix_im_pipleline_reg(
+        .clk(clk),
+        .pc_in(exe_next_pc),
+        .O_in(exe_O),
+        .B_in(exe_B),
+        .access_size_in(exe_access_size),
+        .rw_in(exe_rw),
+        .memory_sign_extend_in(exe_memory_sign_extend),
+        .res_data_sel_in(exe_res_data_sel),
+        .rt_in(exe_rt),
+        .rd_in(exe_rd),
+        .pc_out(mem_next_pc),
+        .O_out(mem_effective_addr),
+        .B_out(mem_reg_data),
+        .access_size_out(mem_data_access_size),
+        .rw_out(mem_data_rw),
+        .memory_sign_extend_out(mem_memory_sign_extend),
+        .res_data_sel_out(mem_res_data_sel),
+        .rt_out(mem_rt),
+        .rd_out(mem_rd)
+    );
+
+    // We have some muxes here to write the data memory during SREC parsing
+    mux_2_1_32_bit srec_address_mux(
+        .line0(mem_effective_addr),
+        .line1(srec_address),
+        .select(srec_parse),
+        .output_line(mem_addr_in)
+    );
+    mux_2_1_32_bit srec_data_data_mux(
+        .line0(mem_reg_data),
+        .line1(srec_data_in),
+        .select(srec_parse),
+        .output_line(mem_data_in)
+    );
+    mux_2_1_1_bit srec_data_rw_mux(
+        .line0(mem_data_rw),
+        .line1(srec_rw),
+        .select(srec_parse),
+        .output_line(mem_rw)
+    );
+    mux_2_1_2_bit srec_data_access_size_mux(
+        .line0(mem_data_access_size),
+        .line1(srec_access_size),
+        .select(srec_parse),
+        .output_line(mem_access_size)
+    );
+
+    // Instantiate the data memory module
+    memory data_memory(
+        .data_out(mem_data_out),
+        .address(mem_addr_in),
+        .data_in(mem_data_in),
+        .write(mem_rw),
+        .clk(clk),
+        .access_size(mem_access_size)
+    );
+
+    // Instantiate the sign extender for loading half words and bytes
+    memory_sign_extender memory_sign_extender(
+        .in_data(mem_data_out),
+        .data_size(mem_access_size),
+        .sign_extend(mem_memory_sign_extend),
+        .out_data(mem_sign_extend_out)
+    );
+    
+// ------------------------------ WRITE BACK STAGE --------------------------------------//
+    
+    // Instatiate the IM/IW pipeline register
+    im_iw_pipleline_reg im_iw_pipleline_reg(
+        .clk(clk),
+        .pc_in(mem_next_pc),
+        .O_in(mem_effective_addr),
+        .D_in(mem_sign_extend_out),
+        .res_data_sel_in(mem_res_data_sel),
+        .write_to_reg_in(mem_write_to_reg),
+        .dest_reg_sel_in(mem_dest_reg_sel),
+        .rt_in(mem_rt),
+        .rd_in(mem_rd),
+        .pc_out(wb_next_pc),
+        .O_out(wb_O),
+        .D_out(wb_D),
+        .res_data_sel_out(wb_res_data_sel),
+        .write_to_reg_out(wb_write_to_reg),
+        .dest_reg_sel_out(wb_dest_reg_sel),
+        .rt_out(wb_rt),
+        .rd_out(wb_rd)
+    );
+
+    // We have some muxes here to write the data memory during SREC parsing
+    mux_2_1_32_bit wb_data_mux(
+        .line0(wb_O),
+        .line1(wb_D),
+        .select(wb_res_data_sel),
+        .output_line(wb_data)
+    );
+
+
     // Control
     always @(posedge clk) begin
-        reg_file_write_enable = 0; // TODO: Change this later
+        reg_file_write_enable = 0; // Clear the write enable in case we wrote to reg file on neg edge
         
         
         // ----------- Decode Stage Control Signal Logic --------------------------- //
         dec_illegal_insn = 0;
-        dest_reg_sel = 0;
+        dec_dest_reg_sel = 0;
         dec_alu_op = 0;
         dec_op2_sel = 0;
         dec_is_branch = 0;
         dec_is_jump = 0;
         dec_branch_type = 0;
+        dec_rw = 0;
+        dec_access_size = 0;
+        dec_memory_sign_extend = 0;
+        dec_res_data_sel = 0;
+        dec_write_to_reg = 1;
+        dec_rt = rt;
+        dec_rd = rd;
         if (((opcode & 6'b111000)>> 3) == 3'h0) begin
             if ((opcode & 6'b000111) == 3'h0) begin
             	// We are in the SPECIAL Opcode encoding table
             	// This is an R-type instruction
-            	dest_reg_sel = 0;
+            	dec_dest_reg_sel = 0;
             	if (func == 6'b100000 || func == 6'b100001) // ADD, ADDU
             		dec_alu_op = 0; // Do an add operation
             	else if (func == 6'b100010 || func == 6'b100011) // SUB, SUBU
@@ -305,8 +472,9 @@ module processor(
             end else if (((opcode & 6'b000111)  == 3'd2) || ((opcode & 6'b000111) == 3'd3)) begin
             	// J and JAL instructions
             	// This is J-type instruction
-            	dest_reg_sel = 0;
+            	dec_dest_reg_sel = 0;
             	dec_is_jump = 1;
+                dec_write_to_reg = 0;
             	if (opcode == 6'b000011) begin
             		// JAL instruction
             		dec_illegal_insn = 1;
@@ -316,6 +484,7 @@ module processor(
             	// BEQ, BNE, BLEZ, BGTZ
             	// This is an I-type instruction
             	dec_is_branch = 1;
+                dec_write_to_reg = 0;
             	if (opcode == 6'b000100) begin 
             		// BEQ
             		dec_alu_op = 1; // We want to do a test if the result is zero from a subtract
@@ -351,28 +520,65 @@ module processor(
         		6'b001110: dec_alu_op = 9;  // XORI
         		6'b001111: dec_alu_op = 12; // LUI
         	endcase
-        	dest_reg_sel = 1;
+        	dec_dest_reg_sel = 1;
         	dec_op2_sel = 1; // We want op2 to be the immediate in the ALU
         end else if (((opcode & 6'b111000)>> 3) == 3'd3) begin
         	// No idea?
-        	dest_reg_sel = 0;
+        	dec_dest_reg_sel = 0;
         	dec_illegal_insn = 1;
         end else if (((opcode & 6'b111000)>> 3) == 3'd4) begin
         	// LB, LH, LWL, LW, LBU, LHU, LWR
         	// This is an I-type instruction
-    		dest_reg_sel = 1;
+    		dec_dest_reg_sel = 1;
         	dec_op2_sel = 1;
         	dec_alu_op = 0; // We want to add the value of rs to the immediate
+            dec_res_data_sel = 1;
+            case (opcode)
+                6'b100000 : begin 
+                    dec_access_size = 0; //LB
+                    dec_memory_sign_extend = 1;
+                end
+                6'b100001 : begin
+                    dec_access_size = 1; //LH
+                    dec_memory_sign_extend = 1;
+                end
+                6'b100010 : dec_access_size = 2; //LWL
+                6'b100011 : dec_access_size = 2; //LW
+                6'b100100 : dec_access_size = 0; //LBU
+                6'b100101 : dec_access_size = 1; //LHU
+                6'b100110 : dec_access_size = 2; //LWR
+                default : dec_illegal_insn = 1;
+            endcase
         end else if (((opcode & 6'b111000)>> 3) == 3'd5) begin
         	// SB, SH, SWL, SW, SWR
 			// This is an I-type instruction
-    		dest_reg_sel = 1;
+    		dec_dest_reg_sel = 1;
         	dec_op2_sel = 1;
         	dec_alu_op = 0; // We want to add the value of rs to the immediate
+            dec_rw = 1; // We want to write to memory when we store
+            dec_write_to_reg = 0;
+            case (opcode)
+                6'b101000 : dec_access_size = 0; //SB
+                6'b101001 : dec_access_size = 1; //SH
+                6'b101010 : dec_illegal_insn = 1; //dec_access_size = 2; //SWL
+                6'b101011 : dec_access_size = 2; //SW
+                6'b101100 : dec_access_size = 0; //SBU
+                6'b101101 : dec_access_size = 1; //SHU
+                6'b101110 : dec_illegal_insn = 1; //dec_access_size = 2; //SWR
+                default : dec_illegal_insn = 1;
+            endcase
         end else begin
             dec_illegal_insn = 1;
         end
+    end
 
+    always @(negedge clk) begin
+        // ----------------- WRITE BACK CONTROL LOGIC -------------------------------- //
+        if (wb_write_to_reg == 1) begin
+            // We need to write the the register so we should set the read write enable and
+            // select the destination reigster then feed the data to the input port.
+            reg_file_write_enable = 1;
+        end
     end
 
 endmodule
