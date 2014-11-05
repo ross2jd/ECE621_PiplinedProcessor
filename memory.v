@@ -31,7 +31,9 @@ module memory(
                 memory[(address-offset)] = data_in[7:0];
             end
         end
-		else begin // Read the value into data_out
+    end
+    always @(posedge clk) begin
+		if (!write) begin // Read the value into data_out
             if (access_size == 'b10) begin //32 bit access
                 data_out[7:0] = memory[(address-offset) + 3];
                 data_out[15:8] = memory[(address-offset) + 2];

@@ -60,8 +60,8 @@ module processor_tb;
         $monitor("Starting the SREC parser...");
         
         // Open the SREC file to read
-        fh = $fopen("D:/Git_Repositories/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
-        //fh = $fopen("D:/GitHub/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
+        //fh = $fopen("D:/Git_Repositories/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
+        fh = $fopen("D:/GitHub/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
         //fh = $fopen("D:/Dropbox/Grad/01 Fall14/ECE621/Labs/L1/code/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
         // Start the clock high
 		clk = 0;
@@ -281,6 +281,10 @@ module processor_tb;
         #100;
         // Set the stall in to be 0 just read out the pc, rw, and access size.
         srec_parse = 0;
+        #200;
+        processor_uut.stall = 0;
+        processor_uut.fetch.pc = 32'h80020000;
+        #100;
 
         //$monitor("%h:    %h   ", processor_uut.pc_out, processor_uut.insn_out);
         while (processor_uut.pc <= highest_address) begin

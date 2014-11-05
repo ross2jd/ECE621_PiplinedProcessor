@@ -57,6 +57,9 @@ module processor(
     reg srec_rw;
     reg [1:0]srec_access_size;
 
+    // Fetch wires
+    wire [31:0]fetch_next_pc;
+
     // Decode wires
     wire [31:0]decode_pc; // We define this as the PC for next instruction to be executed
     wire [31:0]decode_ir; // We define this as the current instruction being decoded
@@ -143,6 +146,8 @@ module processor(
     wire [4:0]wb_rd;
     wire [31:0]wb_next_pc;
     
+
+    //--------------------------- FETCH STAGE -----------------------------------------//
     
     // Instantiate mux's for each of the SREC registers to aid the SREC parser.
     mux_2_1_32_bit srec_insn_address_mux(
@@ -170,6 +175,7 @@ module processor(
         .clk_in(clk),
         .stall_in(stall),
         .pc_out(pc),
+        .next_pc(fetch_next_pc),
         .rw_out(fetch_rw),
         .access_size_out(fetch_access_size)
     );
@@ -189,7 +195,7 @@ module processor(
     // Instatiate the IF/ID pipeline register to kep the PC and IR
     if_id_pipleline_reg if_id_pipleline_reg(
         .clk(clk),
-        .pc_in(pc),
+        .pc_in(fetch_next_pc),
         .ir_in(insn_data_out),
         .pc_out(decode_pc),
         .ir_out(decode_ir)

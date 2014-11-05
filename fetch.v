@@ -23,23 +23,23 @@ module fetch(
     input clk_in,           // Clock signal for the fetch module
     input stall_in,         // Indicates a stall
     output reg [31:0]pc_out,    // Supplies the address in the PC register to the address input of the MM and decode stage
+    output reg [31:0]next_pc,   // Supply the next PC
     output reg rw_out,          // Indicates whether the fetch stage is performing a read or write to MM
     output reg [1:0]access_size_out  // Supplies the size of the word that is being accessed by the fetch module
 );
-    // Parameter to define the address spaces
-    parameter instruction_offset = 32'h80020000;
     
-    reg [31:0]pc = instruction_offset; // The PC register
+    reg [31:0]pc = 0; // The PC register
     
-    always @(posedge clk_in) begin
+    always @(negedge clk_in) begin
         pc_out = pc;
         rw_out = 0;
         access_size_out = 2'b10;
+        next_pc = pc + 4;
         case(stall_in)
             0:  begin
                     // Increment the pc by 4 so we read the next 
                     // instruction on the next clock cycle.
-                    pc <= pc + 4;
+                    pc <= next_pc;
                 end
             1:  begin
                     // TODO: Stalls not implemented
