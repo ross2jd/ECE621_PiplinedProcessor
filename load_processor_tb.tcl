@@ -5,7 +5,7 @@ vsim -gui work.processor_tb
 # Clock & Counter(Yellow)
 add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/clk
 add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/srec_parse
-add wave -position insertpoint -radix decimal -color yellow sim:/processor_tb/pipe_stage_counter
+
 
 # Fetch Stage (Plum)
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/stall
@@ -45,4 +45,4 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_ne
 
 
 
-run 217900 ns
+run 217700 ns
