@@ -22,14 +22,14 @@
 module if_id_pipleline_reg(
     input clk,
     input [31:0]pc_in,
-    input [31:0]ir_in,
-    output reg [31:0]pc_out,
-    output reg [31:0]ir_out
+    //input [31:0]ir_in,
+    output reg [31:0]pc_out
+    //output reg [31:0]ir_out
 );
 
     always @(negedge clk) begin
         // write on the negative edge of the clock cycle
         pc_out = pc_in;
-        ir_out = ir_in;
+        //ir_out = ir_in;
     end
 endmodule

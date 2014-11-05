@@ -23,6 +23,9 @@ module processor(
     input clk,  // The system clock
     input srec_parse    // If the SREC parser is active or not.
 );
+    
+    reg [2:0]cur_pipe_state;
+    reg [2:0]next_pipe_state;
 
     // Decoder signals 
     wire [4:0]rs;
@@ -118,7 +121,7 @@ module processor(
 
     // Memory wires
     wire [31:0]mem_next_pc;
-    wire [31:0]mem_effective_addr;
+    wire [31:0]mem_alu_result;
     wire [31:0]mem_reg_data;
     wire [1:0]mem_data_access_size;
     wire mem_data_rw;
@@ -182,7 +185,7 @@ module processor(
     
     // Instantiate the instruction memory module
     memory insn_memory(
-        .data_out(insn_data_out),
+        .data_out(decode_ir),
         .address(insn_address),
         .data_in(srec_data_in), // We can tie the srec_data_in wire to this port since we should never be writing to instruction memory unless we are srec parsing
         .write(insn_rw),
@@ -196,17 +199,9 @@ module processor(
     if_id_pipleline_reg if_id_pipleline_reg(
         .clk(clk),
         .pc_in(fetch_next_pc),
-        .ir_in(insn_data_out),
-        .pc_out(decode_pc),
-        .ir_out(decode_ir)
-    );
-
-    // Instantiate a mux for selecting which destination to choose
-    mux_2_1_5_bit dest_reg_mux(
-        .line0(wb_rt),
-        .line1(wb_rd),
-        .select(wb_dest_reg_sel),
-        .output_line(dest_reg)
+        //.ir_in(insn_data_out), // We don't need to latch the ir because it won't be available until next clock cycle
+        .pc_out(decode_pc)
+        //.ir_out(decode_ir)
     );
 
     // Instantiate the register file
@@ -260,6 +255,8 @@ module processor(
         .res_data_sel_in(dec_res_data_sel),
         .rt_in(dec_rt),
         .rd_in(dec_rd),
+        .dest_reg_sel_in(dec_dest_reg_sel),
+        .write_to_reg_in(dec_write_to_reg),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
         .A_out(exe_A),
@@ -275,7 +272,9 @@ module processor(
         .memory_sign_extend_out(mem_memory_sign_extend),
         .res_data_sel_out(mem_res_data_sel),
         .rt_out(exe_rt),
-        .rd_out(exe_rd)
+        .rd_out(exe_rd),
+        .dest_reg_sel_out(exe_dest_reg_sel),
+        .write_to_reg_out(exe_write_to_reg)
     );
 
     sign_extender sign_extender(
@@ -342,20 +341,24 @@ module processor(
         .res_data_sel_in(exe_res_data_sel),
         .rt_in(exe_rt),
         .rd_in(exe_rd),
+        .dest_reg_sel_in(exe_dest_reg_sel),
+        .write_to_reg_in(exe_write_to_reg),
         .pc_out(mem_next_pc),
-        .O_out(mem_effective_addr),
+        .O_out(mem_alu_result), // This will be the R-type data to write or EA for mem
         .B_out(mem_reg_data),
         .access_size_out(mem_data_access_size),
         .rw_out(mem_data_rw),
         .memory_sign_extend_out(mem_memory_sign_extend),
         .res_data_sel_out(mem_res_data_sel),
         .rt_out(mem_rt),
-        .rd_out(mem_rd)
+        .rd_out(mem_rd),
+        .dest_reg_sel_out(mem_dest_reg_sel),
+        .write_to_reg_out(mem_write_to_reg)
     );
 
     // We have some muxes here to write the data memory during SREC parsing
     mux_2_1_32_bit srec_address_mux(
-        .line0(mem_effective_addr),
+        .line0(mem_alu_result),
         .line1(srec_address),
         .select(srec_parse),
         .output_line(mem_addr_in)
@@ -403,7 +406,7 @@ module processor(
     im_iw_pipleline_reg im_iw_pipleline_reg(
         .clk(clk),
         .pc_in(mem_next_pc),
-        .O_in(mem_effective_addr),
+        .O_in(mem_alu_result),
         .D_in(mem_sign_extend_out),
         .res_data_sel_in(mem_res_data_sel),
         .write_to_reg_in(mem_write_to_reg),
@@ -428,10 +431,39 @@ module processor(
         .output_line(wb_data)
     );
 
+    // Wierdest thing... This mux doesn't work at all
+    // // Instantiate a mux for selecting which destination to choose
+    // mux_2_1_5_bit dest_reg_mux(
+    //     .line0(wb_rt),
+    //     .line1(wb_rd),
+    //     .select(wb_dest_reg_sel),
+    //     .output_line(dest_reg)
+    // );
+    assign dest_reg = (wb_dest_reg_sel) ? (wb_rd) : (wb_rt);
+
 
     // Control
     always @(posedge clk) begin
-        reg_file_write_enable = 0; // Clear the write enable in case we wrote to reg file on neg edge
+        case (cur_pipe_state)
+            3'b000 : begin
+                next_pipe_state = 3'b001;
+                stall = 1;
+            end
+            3'b001 : next_pipe_state = 3'b010;
+            3'b010 : next_pipe_state = 3'b011;
+            3'b011 : begin
+                next_pipe_state = 3'b100;
+                if (mem_write_to_reg == 1) begin
+                    reg_file_write_enable = 1;
+                end
+            end
+            3'b100 : begin
+                next_pipe_state = 3'b000;
+                reg_file_write_enable = 0; // Clear it incase we set it in WB
+                stall = 0;
+            end
+        endcase
+        //reg_file_write_enable = 0; // Clear the write enable in case we wrote to reg file on neg edge
         
         
         // ----------- Decode Stage Control Signal Logic --------------------------- //
@@ -579,11 +611,18 @@ module processor(
     end
 
     always @(negedge clk) begin
-        // ----------------- WRITE BACK CONTROL LOGIC -------------------------------- //
-        if (wb_write_to_reg == 1) begin
-            // We need to write the the register so we should set the read write enable and
-            // select the destination reigster then feed the data to the input port.
-            reg_file_write_enable = 1;
+        if (srec_parse == 0) begin
+            cur_pipe_state = next_pipe_state;
+            case (cur_pipe_state)
+                3'b100 : begin
+                    // ----------------- WRITE BACK CONTROL LOGIC -------------------------------- //
+                    if (wb_write_to_reg == 1) begin
+                        // We need to write the the register so we should set the read write enable and
+                        // select the destination reigster then feed the data to the input port.
+                        reg_file_write_enable = 1;
+                    end
+                end
+            endcase
         end
     end
 

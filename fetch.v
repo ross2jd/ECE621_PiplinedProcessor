@@ -30,20 +30,23 @@ module fetch(
     
     reg [31:0]pc = 0; // The PC register
     
-    always @(negedge clk_in) begin
+    always @(posedge clk_in) begin
         pc_out = pc;
         rw_out = 0;
         access_size_out = 2'b10;
+    end
+    always @(negedge clk_in) begin
+        // On the negative edge we will update the pc if we don't have a stall.
         next_pc = pc + 4;
         case(stall_in)
             0:  begin
                     // Increment the pc by 4 so we read the next 
                     // instruction on the next clock cycle.
-                    pc <= next_pc;
+                    pc = next_pc;
                 end
             1:  begin
                     // TODO: Stalls not implemented
-                    pc <= pc;
+                    pc = pc;
                 end
             default:    begin
                             $display("Unknown signal!");

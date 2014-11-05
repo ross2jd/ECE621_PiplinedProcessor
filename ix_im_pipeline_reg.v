@@ -28,6 +28,8 @@ module ix_im_pipleline_reg(
     input res_data_sel_in,
     input [4:0]rt_in,
     input [4:0]rd_in,
+    input dest_reg_sel_in,
+    input write_to_reg_in,
     output reg [31:0]pc_out,
     output reg [31:0]O_out,
     output reg [31:0]B_out,
@@ -36,7 +38,9 @@ module ix_im_pipleline_reg(
     output reg memory_sign_extend_out,
     output reg res_data_sel_out,
     output reg [4:0]rt_out,
-    output reg [4:0]rd_out
+    output reg [4:0]rd_out,
+    output reg dest_reg_sel_out,
+    output reg write_to_reg_out
 );
 
     always @(negedge clk) begin
@@ -50,5 +54,7 @@ module ix_im_pipleline_reg(
         res_data_sel_out = res_data_sel_in;
         rd_out = rd_in;
         rt_out = rd_in;
+        res_data_sel_out = res_data_sel_in;
+        write_to_reg_out = write_to_reg_in;
     end
 endmodule
