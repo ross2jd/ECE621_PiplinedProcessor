@@ -33,8 +33,43 @@ module reg_file(
 	always @(negedge clk) begin
 		// This is where we will do our writes
 		if (write_enable == 1'b1) begin
-			register[dest] = destVal;
-			register[0] = 0; // r0 is always 0
+			case (dest)
+				5'd0 : register[0] = 0;
+				5'd1 : register[1] = destVal;
+				5'd2 : register[2] = destVal;
+				5'd3 : register[3] = destVal;
+				5'd4 : register[4] = destVal;
+				5'd5 : register[5] = destVal;
+				5'd6 : register[6] = destVal;
+				5'd7 : register[7] = destVal;
+				5'd8 : register[8] = destVal;
+				5'd9 : register[9] = destVal;
+				5'd10 : register[10] = destVal;
+				5'd11 : register[11] = destVal;
+				5'd12 : register[12] = destVal;
+				5'd13 : register[13] = destVal;
+				5'd14 : register[14] = destVal;
+				5'd15 : register[15] = destVal;
+				5'd16 : register[16] = destVal;
+				5'd17 : register[17] = destVal;
+				5'd18 : register[18] = destVal;
+				5'd19 : register[19] = destVal;
+				5'd20 : register[20] = destVal;
+				5'd21 : register[21] = destVal;
+				5'd22 : register[22] = destVal;
+				5'd23 : register[23] = destVal;
+				5'd24 : register[24] = destVal;
+				5'd25 : register[25] = destVal;
+				5'd26 : register[26] = destVal;
+				5'd27 : register[27] = destVal;
+				5'd28 : register[28] = destVal;
+				5'd29 : register[29] = destVal;
+				5'd30 : register[30] = destVal;
+				5'd31 : register[31] = destVal;
+				default : register[0] = 1;
+			endcase
+			//register[dest] = destVal;
+			//register[0] = 0; // r0 is always 0
 		end
 	end
 

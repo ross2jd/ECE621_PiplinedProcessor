@@ -22,6 +22,6 @@ module sign_extender(
 	output reg [31:0] out_data
 );
 	always @(in_data) begin
-		out_data[31:0] <= { {16{in_data[15]}}, in_data[15:0] };
+		out_data[31:0] = { {16{in_data[15]}}, in_data[15:0] };
 	end	
 endmodule

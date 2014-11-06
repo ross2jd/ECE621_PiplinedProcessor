@@ -118,6 +118,7 @@ module processor(
     wire exe_dest_reg_sel;
     wire [4:0]exe_rt;
     wire [4:0]exe_rd;
+    wire exe_update_pc;
 
     // Memory wires
     wire [31:0]mem_next_pc;
@@ -137,6 +138,7 @@ module processor(
     wire mem_res_data_sel;
     wire mem_write_to_reg;
     wire mem_dest_reg_sel;
+    wire mem_update_pc;
 
     // Write back wires
     wire [31:0]wb_O;
@@ -148,6 +150,7 @@ module processor(
     wire [4:0]wb_rt;
     wire [4:0]wb_rd;
     wire [31:0]wb_next_pc;
+    wire wb_update_pc;
     
 
     //--------------------------- FETCH STAGE -----------------------------------------//
@@ -177,6 +180,8 @@ module processor(
     fetch fetch(
         .clk_in(clk),
         .stall_in(stall),
+        .pc_in(wb_next_pc),
+        .update_pc(wb_update_pc),
         .pc_out(pc),
         .next_pc(fetch_next_pc),
         .rw_out(fetch_rw),
@@ -269,8 +274,8 @@ module processor(
         .branch_type_out(exe_branch_type),
         .access_size_out(exe_access_size),
         .rw_out(exe_rw),
-        .memory_sign_extend_out(mem_memory_sign_extend),
-        .res_data_sel_out(mem_res_data_sel),
+        .memory_sign_extend_out(exe_memory_sign_extend),
+        .res_data_sel_out(exe_res_data_sel),
         .rt_out(exe_rt),
         .rd_out(exe_rd),
         .dest_reg_sel_out(exe_dest_reg_sel),
@@ -327,6 +332,8 @@ module processor(
         .output_line(exe_next_pc)
     );
 
+    assign exe_update_pc = exe_is_jump | exe_is_branch;
+
 // ------------------------------ MEMORY STAGE --------------------------------------//
     
     // Instatiate the IX/IM pipeline register
@@ -343,6 +350,7 @@ module processor(
         .rd_in(exe_rd),
         .dest_reg_sel_in(exe_dest_reg_sel),
         .write_to_reg_in(exe_write_to_reg),
+        .update_pc_in(exe_update_pc),
         .pc_out(mem_next_pc),
         .O_out(mem_alu_result), // This will be the R-type data to write or EA for mem
         .B_out(mem_reg_data),
@@ -353,7 +361,8 @@ module processor(
         .rt_out(mem_rt),
         .rd_out(mem_rd),
         .dest_reg_sel_out(mem_dest_reg_sel),
-        .write_to_reg_out(mem_write_to_reg)
+        .write_to_reg_out(mem_write_to_reg),
+        .update_pc_out(mem_update_pc)
     );
 
     // We have some muxes here to write the data memory during SREC parsing
@@ -413,6 +422,7 @@ module processor(
         .dest_reg_sel_in(mem_dest_reg_sel),
         .rt_in(mem_rt),
         .rd_in(mem_rd),
+        .update_pc_in(mem_update_pc),
         .pc_out(wb_next_pc),
         .O_out(wb_O),
         .D_out(wb_D),
@@ -420,7 +430,8 @@ module processor(
         .write_to_reg_out(wb_write_to_reg),
         .dest_reg_sel_out(wb_dest_reg_sel),
         .rt_out(wb_rt),
-        .rd_out(wb_rd)
+        .rd_out(wb_rd),
+        .update_pc_out(wb_update_pc)
     );
 
     // We have some muxes here to write the data memory during SREC parsing
@@ -433,13 +444,13 @@ module processor(
 
     // Wierdest thing... This mux doesn't work at all
     // // Instantiate a mux for selecting which destination to choose
-    // mux_2_1_5_bit dest_reg_mux(
-    //     .line0(wb_rt),
-    //     .line1(wb_rd),
-    //     .select(wb_dest_reg_sel),
-    //     .output_line(dest_reg)
-    // );
-    assign dest_reg = (wb_dest_reg_sel) ? (wb_rd) : (wb_rt);
+    mux_2_1_5_bit dest_reg_mux(
+        .line0(wb_rd),
+        .line1(wb_rt),
+        .select(wb_dest_reg_sel),
+        .output_line(dest_reg)
+    );
+    //assign dest_reg = (wb_dest_reg_sel) ? (wb_rd) : (wb_rt)
 
 
     // Control
@@ -449,180 +460,186 @@ module processor(
                 next_pipe_state = 3'b001;
                 stall = 1;
             end
-            3'b001 : next_pipe_state = 3'b010;
+            3'b001 : begin 
+                next_pipe_state = 3'b010;
+                // ----------- Decode Stage Control Signal Logic --------------------------- //
+                dec_illegal_insn = 0;
+                dec_dest_reg_sel = 0;
+                dec_alu_op = 0;
+                dec_op2_sel = 0;
+                dec_is_branch = 0;
+                dec_is_jump = 0;
+                dec_branch_type = 0;
+                dec_rw = 0;
+                dec_access_size = 0;
+                dec_memory_sign_extend = 0;
+                dec_res_data_sel = 0;
+                dec_write_to_reg = 1;
+                dec_rt = rt;
+                dec_rd = rd;
+                if (((opcode & 6'b111000)>> 3) == 3'h0) begin
+                    if ((opcode & 6'b000111) == 3'h0) begin
+                        // We are in the SPECIAL Opcode encoding table
+                        // This is an R-type instruction
+                        dec_dest_reg_sel = 0;
+                        if (func == 6'b100000 || func == 6'b100001) // ADD, ADDU
+                            dec_alu_op = 0; // Do an add operation
+                        else if (func == 6'b100010 || func == 6'b100011) // SUB, SUBU
+                            dec_alu_op = 1;
+                        else if (func == 6'b011000 || func == 6'b011001) // MULT, MULTU
+                            dec_alu_op = 2;
+                        else if (func == 6'b011010 || func == 6'b011011) // DIV, DIVU
+                            dec_alu_op = 3;
+                        else if (func == 6'b000000) begin // SLL
+                            dec_alu_op = 4;
+                            dec_shift_amount = sha;
+                        end
+                        else if (func == 6'b000010) begin // SLL
+                            dec_alu_op = 5;
+                            dec_shift_amount = sha;
+                        end
+                        else if (func == 6'b101010 || func == 6'b101011) // SLT, SLTU
+                            dec_alu_op = 6;
+                        else begin
+                            dec_illegal_insn = 1;
+                        end
+                    end else if (((opcode & 6'b000111)  == 3'd2) || ((opcode & 6'b000111) == 3'd3)) begin
+                        // J and JAL instructions
+                        // This is J-type instruction
+                        dec_dest_reg_sel = 0;
+                        dec_is_jump = 1;
+                        dec_write_to_reg = 0;
+                        if (opcode == 6'b000011) begin
+                            // JAL instruction
+                            dec_illegal_insn = 1;
+                            // TODO: We need to store the return address into reg[31]
+                        end
+                    end else begin
+                        // BEQ, BNE, BLEZ, BGTZ
+                        // This is an I-type instruction
+                        dec_is_branch = 1;
+                        dec_write_to_reg = 0;
+                        if (opcode == 6'b000100) begin 
+                            // BEQ
+                            dec_alu_op = 1; // We want to do a test if the result is zero from a subtract
+                            dec_branch_type = 0;
+                        end else if (opcode == 6'b000101) begin
+                            // BNE
+                            dec_alu_op = 1; // We want to do a test if the result is zero from a subtract
+                            dec_branch_type = 1;
+                        end else if (opcode == 6'b000110) begin
+                            // BLEZ
+                            // TODO: Test that rt has zero in it
+                            dec_illegal_insn = 1;
+                            dec_alu_op = 0;
+                            dec_branch_type = 2;
+                        end else begin
+                            // BGTZ
+                            // TODO: Test that rt has zero in it
+                            dec_illegal_insn = 1;
+                            dec_alu_op = 0;
+                            dec_branch_type = 3;
+                        end
+                    end
+                end else if (((opcode & 6'b111000)>> 3) == 3'd1) begin
+                    // ADDI, ADDIU, SLTI, SLTIU, ANDI, ORI, XORI, LUI
+                    // This is an I-type instruction
+                    case (opcode)
+                        6'b001000: dec_alu_op = 0;  // ADDI
+                        6'b001001: dec_alu_op = 0;  // ADDIU
+                        6'b001010: dec_alu_op = 6;  // SLTI
+                        6'b001011: dec_alu_op = 6;  // SLTUI
+                        6'b001100: dec_alu_op = 7;  // ANDI
+                        6'b001101: dec_alu_op = 8;  // ORI
+                        6'b001110: dec_alu_op = 9;  // XORI
+                        6'b001111: dec_alu_op = 12; // LUI
+                    endcase
+                    dec_write_to_reg = 1;
+                    dec_dest_reg_sel = 1;
+                    dec_op2_sel = 1; // We want op2 to be the immediate in the ALU
+                end else if (((opcode & 6'b111000)>> 3) == 3'd3) begin
+                    // No idea?
+                    dec_dest_reg_sel = 0;
+                    dec_illegal_insn = 1;
+                end else if (((opcode & 6'b111000)>> 3) == 3'd4) begin
+                    // LB, LH, LWL, LW, LBU, LHU, LWR
+                    // This is an I-type instruction
+                    dec_dest_reg_sel = 1;
+                    dec_op2_sel = 1;
+                    dec_alu_op = 0; // We want to add the value of rs to the immediate
+                    dec_res_data_sel = 1;
+                    case (opcode)
+                        6'b100000 : begin 
+                            dec_access_size = 0; //LB
+                            dec_memory_sign_extend = 1;
+                        end
+                        6'b100001 : begin
+                            dec_access_size = 1; //LH
+                            dec_memory_sign_extend = 1;
+                        end
+                        6'b100010 : dec_access_size = 2; //LWL
+                        6'b100011 : dec_access_size = 2; //LW
+                        6'b100100 : dec_access_size = 0; //LBU
+                        6'b100101 : dec_access_size = 1; //LHU
+                        6'b100110 : dec_access_size = 2; //LWR
+                        default : dec_illegal_insn = 1;
+                    endcase
+                end else if (((opcode & 6'b111000)>> 3) == 3'd5) begin
+                    // SB, SH, SWL, SW, SWR
+                    // This is an I-type instruction
+                    dec_dest_reg_sel = 1;
+                    dec_op2_sel = 1;
+                    dec_alu_op = 0; // We want to add the value of rs to the immediate
+                    dec_rw = 1; // We want to write to memory when we store
+                    dec_write_to_reg = 0;
+                    case (opcode)
+                        6'b101000 : dec_access_size = 0; //SB
+                        6'b101001 : dec_access_size = 1; //SH
+                        6'b101010 : dec_illegal_insn = 1; //dec_access_size = 2; //SWL
+                        6'b101011 : dec_access_size = 2; //SW
+                        6'b101100 : dec_access_size = 0; //SBU
+                        6'b101101 : dec_access_size = 1; //SHU
+                        6'b101110 : dec_illegal_insn = 1; //dec_access_size = 2; //SWR
+                        default : dec_illegal_insn = 1;
+                    endcase
+                end else begin
+                    dec_illegal_insn = 1;
+                end
+            end
             3'b010 : next_pipe_state = 3'b011;
             3'b011 : begin
                 next_pipe_state = 3'b100;
-                if (mem_write_to_reg == 1) begin
-                    reg_file_write_enable = 1;
-                end
             end
             3'b100 : begin
                 next_pipe_state = 3'b000;
-                reg_file_write_enable = 0; // Clear it incase we set it in WB
                 stall = 0;
             end
         endcase
-        //reg_file_write_enable = 0; // Clear the write enable in case we wrote to reg file on neg edge
-        
-        
-        // ----------- Decode Stage Control Signal Logic --------------------------- //
-        dec_illegal_insn = 0;
-        dec_dest_reg_sel = 0;
-        dec_alu_op = 0;
-        dec_op2_sel = 0;
-        dec_is_branch = 0;
-        dec_is_jump = 0;
-        dec_branch_type = 0;
-        dec_rw = 0;
-        dec_access_size = 0;
-        dec_memory_sign_extend = 0;
-        dec_res_data_sel = 0;
-        dec_write_to_reg = 1;
-        dec_rt = rt;
-        dec_rd = rd;
-        if (((opcode & 6'b111000)>> 3) == 3'h0) begin
-            if ((opcode & 6'b000111) == 3'h0) begin
-            	// We are in the SPECIAL Opcode encoding table
-            	// This is an R-type instruction
-            	dec_dest_reg_sel = 0;
-            	if (func == 6'b100000 || func == 6'b100001) // ADD, ADDU
-            		dec_alu_op = 0; // Do an add operation
-            	else if (func == 6'b100010 || func == 6'b100011) // SUB, SUBU
-            		dec_alu_op = 1;
-            	else if (func == 6'b011000 || func == 6'b011001) // MULT, MULTU
-            		dec_alu_op = 2;
-            	else if (func == 6'b011010 || func == 6'b011011) // DIV, DIVU
-            		dec_alu_op = 3;
-            	else if (func == 6'b000000) begin // SLL
-            		dec_alu_op = 4;
-            		dec_shift_amount = sha;
-            	end
-            	else if (func == 6'b000010) begin // SLL
-            		dec_alu_op = 5;
-            		dec_shift_amount = sha;
-            	end
-            	else if (func == 6'b101010 || func == 6'b101011) // SLT, SLTU
-            		dec_alu_op = 6;
-                else begin
-                	dec_illegal_insn = 1;
-                end
-            end else if (((opcode & 6'b000111)  == 3'd2) || ((opcode & 6'b000111) == 3'd3)) begin
-            	// J and JAL instructions
-            	// This is J-type instruction
-            	dec_dest_reg_sel = 0;
-            	dec_is_jump = 1;
-                dec_write_to_reg = 0;
-            	if (opcode == 6'b000011) begin
-            		// JAL instruction
-            		dec_illegal_insn = 1;
-            		// TODO: We need to store the return address into reg[31]
-            	end
-            end else begin
-            	// BEQ, BNE, BLEZ, BGTZ
-            	// This is an I-type instruction
-            	dec_is_branch = 1;
-                dec_write_to_reg = 0;
-            	if (opcode == 6'b000100) begin 
-            		// BEQ
-            		dec_alu_op = 1; // We want to do a test if the result is zero from a subtract
-            		dec_branch_type = 0;
-            	end else if (opcode == 6'b000101) begin
-            		// BNE
-            		dec_alu_op = 1; // We want to do a test if the result is zero from a subtract
-            		dec_branch_type = 1;
-            	end else if (opcode == 6'b000110) begin
-            		// BLEZ
-            		// TODO: Test that rt has zero in it
-            		dec_illegal_insn = 1;
-            		dec_alu_op = 0;
-            		dec_branch_type = 2;
-            	end else begin
-            		// BGTZ
-            		// TODO: Test that rt has zero in it
-            		dec_illegal_insn = 1;
-            		dec_alu_op = 0;
-            		dec_branch_type = 3;
-            	end
-            end
-        end else if (((opcode & 6'b111000)>> 3) == 3'd1) begin
-        	// ADDI, ADDIU, SLTI, SLTIU, ANDI, ORI, XORI, LUI
-        	// This is an I-type instruction
-        	case (opcode)
-        		6'b001000: dec_alu_op = 0;  // ADDI
-        		6'b001001: dec_alu_op = 0;  // ADDIU
-        		6'b001010: dec_alu_op = 6;  // SLTI
-        		6'b001011: dec_alu_op = 6;  // SLTUI
-        		6'b001100: dec_alu_op = 7;  // ANDI
-        		6'b001101: dec_alu_op = 8;  // ORI
-        		6'b001110: dec_alu_op = 9;  // XORI
-        		6'b001111: dec_alu_op = 12; // LUI
-        	endcase
-        	dec_dest_reg_sel = 1;
-        	dec_op2_sel = 1; // We want op2 to be the immediate in the ALU
-        end else if (((opcode & 6'b111000)>> 3) == 3'd3) begin
-        	// No idea?
-        	dec_dest_reg_sel = 0;
-        	dec_illegal_insn = 1;
-        end else if (((opcode & 6'b111000)>> 3) == 3'd4) begin
-        	// LB, LH, LWL, LW, LBU, LHU, LWR
-        	// This is an I-type instruction
-    		dec_dest_reg_sel = 1;
-        	dec_op2_sel = 1;
-        	dec_alu_op = 0; // We want to add the value of rs to the immediate
-            dec_res_data_sel = 1;
-            case (opcode)
-                6'b100000 : begin 
-                    dec_access_size = 0; //LB
-                    dec_memory_sign_extend = 1;
-                end
-                6'b100001 : begin
-                    dec_access_size = 1; //LH
-                    dec_memory_sign_extend = 1;
-                end
-                6'b100010 : dec_access_size = 2; //LWL
-                6'b100011 : dec_access_size = 2; //LW
-                6'b100100 : dec_access_size = 0; //LBU
-                6'b100101 : dec_access_size = 1; //LHU
-                6'b100110 : dec_access_size = 2; //LWR
-                default : dec_illegal_insn = 1;
-            endcase
-        end else if (((opcode & 6'b111000)>> 3) == 3'd5) begin
-        	// SB, SH, SWL, SW, SWR
-			// This is an I-type instruction
-    		dec_dest_reg_sel = 1;
-        	dec_op2_sel = 1;
-        	dec_alu_op = 0; // We want to add the value of rs to the immediate
-            dec_rw = 1; // We want to write to memory when we store
-            dec_write_to_reg = 0;
-            case (opcode)
-                6'b101000 : dec_access_size = 0; //SB
-                6'b101001 : dec_access_size = 1; //SH
-                6'b101010 : dec_illegal_insn = 1; //dec_access_size = 2; //SWL
-                6'b101011 : dec_access_size = 2; //SW
-                6'b101100 : dec_access_size = 0; //SBU
-                6'b101101 : dec_access_size = 1; //SHU
-                6'b101110 : dec_illegal_insn = 1; //dec_access_size = 2; //SWR
-                default : dec_illegal_insn = 1;
-            endcase
-        end else begin
-            dec_illegal_insn = 1;
-        end
+        //reg_file_write_enable = 0; // Clear the write enable in case we wrote to reg file on neg edge 
     end
 
     always @(negedge clk) begin
         if (srec_parse == 0) begin
             cur_pipe_state = next_pipe_state;
-            case (cur_pipe_state)
-                3'b100 : begin
-                    // ----------------- WRITE BACK CONTROL LOGIC -------------------------------- //
-                    if (wb_write_to_reg == 1) begin
-                        // We need to write the the register so we should set the read write enable and
-                        // select the destination reigster then feed the data to the input port.
-                        reg_file_write_enable = 1;
-                    end
-                end
-            endcase
+            // case (cur_pipe_state)
+            //     3'b100 : begin
+            //         // ----------------- WRITE BACK CONTROL LOGIC -------------------------------- //
+            //         if (wb_write_to_reg == 1) begin
+            //             // We need to write the the register so we should set the read write enable and
+            //             // select the destination reigster then feed the data to the input port.
+            //             reg_file_write_enable = 1;
+            //         end
+            //     end
+            // endcase
+        end
+    end
+
+    always @(cur_pipe_state or wb_write_to_reg) begin
+        if (cur_pipe_state == 3'b100 && wb_write_to_reg == 1'b1) begin
+            reg_file_write_enable = 1;
+        end
+        else begin
+            reg_file_write_enable = 0;
         end
     end
 

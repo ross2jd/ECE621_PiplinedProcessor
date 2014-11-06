@@ -78,7 +78,7 @@ module id_ix_pipleline_reg(
         memory_sign_extend_out = memory_sign_extend_in;
         res_data_sel_out = res_data_sel_in;
         rd_out = rd_in;
-        rt_out = rd_in;
+        rt_out = rt_in;
         dest_reg_sel_out = dest_reg_sel_in;
         write_to_reg_out = write_to_reg_in;
     end
