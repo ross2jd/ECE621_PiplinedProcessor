@@ -28,6 +28,7 @@ module im_iw_pipleline_reg(
     input [4:0]rt_in,
     input [4:0]rd_in,
     input update_pc_in,
+    input is_jal_in,
     output reg [31:0]pc_out,
     output reg [31:0]O_out,
     output reg [31:0]D_out,
@@ -36,7 +37,8 @@ module im_iw_pipleline_reg(
     output reg dest_reg_sel_out,
     output reg [4:0]rt_out,
     output reg [4:0]rd_out,
-    output reg update_pc_out
+    output reg update_pc_out,
+    output reg is_jal_out
 );
 
     always @(negedge clk) begin
@@ -50,5 +52,6 @@ module im_iw_pipleline_reg(
         rd_out = rd_in;
         rt_out = rt_in;
         update_pc_out = update_pc_in;
+        is_jal_out = is_jal_in;
     end
 endmodule

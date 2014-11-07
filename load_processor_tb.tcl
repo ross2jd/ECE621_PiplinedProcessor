@@ -62,6 +62,8 @@ add wave -position insertpoint -radix unsigned -color blue sim:/processor_tb/pro
 add wave -position insertpoint -radix unsigned -color blue sim:/processor_tb/processor_uut/wb_write_to_reg
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_next_pc
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_update_pc
+add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_is_jal
 
-#run 217700 ns
-run 233500 ns
+run 217700 ns
+#run 229600 ns
+#run 233500 ns

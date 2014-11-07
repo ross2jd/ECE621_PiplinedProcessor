@@ -41,6 +41,7 @@ module id_ix_pipleline_reg(
     input [4:0]rd_in,
     input dest_reg_sel_in,
     input write_to_reg_in,
+    input is_jal_in,
     output reg [31:0]pc_out,
     output reg [31:0]ir_out,
     output reg [31:0]A_out,
@@ -58,7 +59,8 @@ module id_ix_pipleline_reg(
     output reg [4:0]rt_out,
     output reg [4:0]rd_out,
     output reg dest_reg_sel_out,
-    output reg write_to_reg_out
+    output reg write_to_reg_out,
+    output reg is_jal_out
 );
 
     always @(negedge clk) begin
@@ -81,5 +83,6 @@ module id_ix_pipleline_reg(
         rt_out = rt_in;
         dest_reg_sel_out = dest_reg_sel_in;
         write_to_reg_out = write_to_reg_in;
+        is_jal_out = is_jal_in;
     end
 endmodule

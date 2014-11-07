@@ -86,6 +86,7 @@ module processor(
     reg dec_write_to_reg;
     reg [4:0]dec_rt;
     reg [4:0]dec_rd;
+    reg dec_is_jal;
 
     // Execute wires
     wire [31:0]exe_pc; // We define this as the PC for next instruction to be executed
@@ -119,6 +120,8 @@ module processor(
     wire [4:0]exe_rt;
     wire [4:0]exe_rd;
     wire exe_update_pc;
+    wire exe_is_jal;
+    wire [31:0]exe_alu_result;
 
     // Memory wires
     wire [31:0]mem_next_pc;
@@ -139,6 +142,7 @@ module processor(
     wire mem_write_to_reg;
     wire mem_dest_reg_sel;
     wire mem_update_pc;
+    wire mem_is_jal;
 
     // Write back wires
     wire [31:0]wb_O;
@@ -151,6 +155,8 @@ module processor(
     wire [4:0]wb_rd;
     wire [31:0]wb_next_pc;
     wire wb_update_pc;
+    wire [4:0]wb_dest_reg;
+    wire wb_is_jal;
     
 
     //--------------------------- FETCH STAGE -----------------------------------------//
@@ -262,6 +268,7 @@ module processor(
         .rd_in(dec_rd),
         .dest_reg_sel_in(dec_dest_reg_sel),
         .write_to_reg_in(dec_write_to_reg),
+        .is_jal_in(dec_is_jal),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
         .A_out(exe_A),
@@ -279,7 +286,8 @@ module processor(
         .rt_out(exe_rt),
         .rd_out(exe_rd),
         .dest_reg_sel_out(exe_dest_reg_sel),
-        .write_to_reg_out(exe_write_to_reg)
+        .write_to_reg_out(exe_write_to_reg),
+        .is_jal_out(exe_is_jal)
     );
 
     sign_extender sign_extender(
@@ -305,9 +313,17 @@ module processor(
         .op2(exe_op2), // operand 2
         .operation(exe_alu_op), // The arithmatic operation to perform
         .shift_amount(exe_shift_amount), // The number of bits to shift
-        .result(exe_O), // The arithmatic result based on the operation
+        .result(exe_alu_result), // The arithmatic result based on the operation
         .zero(exe_zero), // Indicates if the result of the operation is zero.
         .neg(exe_neg)
+    );
+
+    // Instantiate a mux to pass the execution operation result as pc+4 for the JAL instruction
+    mux_2_1_32_bit store_pc_mux(
+        .line0(exe_alu_result),
+        .line1(exe_pc),
+        .select(exe_is_jal),
+        .output_line(exe_O)
     );
 
     branch_resolve branch_resolve(
@@ -351,6 +367,7 @@ module processor(
         .dest_reg_sel_in(exe_dest_reg_sel),
         .write_to_reg_in(exe_write_to_reg),
         .update_pc_in(exe_update_pc),
+        .is_jal_in(exe_is_jal),
         .pc_out(mem_next_pc),
         .O_out(mem_alu_result), // This will be the R-type data to write or EA for mem
         .B_out(mem_reg_data),
@@ -362,7 +379,8 @@ module processor(
         .rd_out(mem_rd),
         .dest_reg_sel_out(mem_dest_reg_sel),
         .write_to_reg_out(mem_write_to_reg),
-        .update_pc_out(mem_update_pc)
+        .update_pc_out(mem_update_pc),
+        .is_jal_out(mem_is_jal)
     );
 
     // We have some muxes here to write the data memory during SREC parsing
@@ -423,6 +441,7 @@ module processor(
         .rt_in(mem_rt),
         .rd_in(mem_rd),
         .update_pc_in(mem_update_pc),
+        .is_jal_in(mem_is_jal),
         .pc_out(wb_next_pc),
         .O_out(wb_O),
         .D_out(wb_D),
@@ -431,10 +450,11 @@ module processor(
         .dest_reg_sel_out(wb_dest_reg_sel),
         .rt_out(wb_rt),
         .rd_out(wb_rd),
-        .update_pc_out(wb_update_pc)
+        .update_pc_out(wb_update_pc),
+        .is_jal_out(wb_is_jal)
     );
 
-    // We have some muxes here to write the data memory during SREC parsing
+    // Mux for selecting between which data we should be writing back to the register
     mux_2_1_32_bit wb_data_mux(
         .line0(wb_O),
         .line1(wb_D),
@@ -442,12 +462,20 @@ module processor(
         .output_line(wb_data)
     );
 
-    // Wierdest thing... This mux doesn't work at all
     // // Instantiate a mux for selecting which destination to choose
     mux_2_1_5_bit dest_reg_mux(
         .line0(wb_rd),
         .line1(wb_rt),
         .select(wb_dest_reg_sel),
+        .output_line(wb_dest_reg)
+    );
+
+    // Instantiate a mux for selecting between the destination register in the previous
+    // mux or selecting the return address register (31) if we have a JAL
+    mux_2_1_5_bit sel_ra_reg_mux(
+        .line0(wb_dest_reg),
+        .line1(5'd31),
+        .select(wb_is_jal),
         .output_line(dest_reg)
     );
     //assign dest_reg = (wb_dest_reg_sel) ? (wb_rd) : (wb_rt)
@@ -477,6 +505,7 @@ module processor(
                 dec_write_to_reg = 1;
                 dec_rt = rt;
                 dec_rd = rd;
+                dec_is_jal = 0;
                 if (((opcode & 6'b111000)>> 3) == 3'h0) begin
                     if ((opcode & 6'b000111) == 3'h0) begin
                         // We are in the SPECIAL Opcode encoding table
@@ -508,11 +537,16 @@ module processor(
                         // This is J-type instruction
                         dec_dest_reg_sel = 0;
                         dec_is_jump = 1;
-                        dec_write_to_reg = 0;
                         if (opcode == 6'b000011) begin
                             // JAL instruction
-                            dec_illegal_insn = 1;
+                            //dec_illegal_insn = 1;
+                            dec_res_data_sel = 0;
+                            dec_is_jal = 1;
+                            dec_write_to_reg = 1;
                             // TODO: We need to store the return address into reg[31]
+                        end
+                        else begin
+                            dec_write_to_reg = 0;
                         end
                     end else begin
                         // BEQ, BNE, BLEZ, BGTZ

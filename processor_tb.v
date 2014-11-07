@@ -267,8 +267,9 @@ module processor_tb;
         #100;
         $monitor("Initializing the register file with values the same as index");
         #100;
+        // Zero out the contents of the registers
         for (i=0; i <32; i=i+1) begin
-            processor_uut.reg_file.register[i] = i;
+            processor_uut.reg_file.register[i] = 0;
             #100;
         end
         $monitor("Done initializing the register file");
@@ -288,166 +289,168 @@ module processor_tb;
         processor_uut.next_pipe_state = 3'b000;
         #100;
 
-        //$monitor("%h:    %h   ", processor_uut.pc_out, processor_uut.insn_out);
+        //$monitor("%h:    %h   ", processor_uut.pc_out, processor_uut.decode_ir);
         while (processor_uut.pc <= highest_address) begin
             @(posedge clk);
-            case(processor_uut.opcode)
-                6'd0:  begin //JR, ADD, ADDU, SUB SUBU, DIV, SLT, SLTU, SLL, SRL, SRA, AND, OR, XOR, NOR, NOP
-                    case(processor_uut.func)
-                    6'd0: begin //SLL, NOP
-                        if (processor_uut.sha == 5'b0) $strobe("%h:    %h    NOP", processor_uut.pc_out, processor_uut.insn_out);
-                        else $strobe("%h:    %h    sll  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rt, processor_uut.sha);
+            if (processor_uut.cur_pipe_state == 3'b001) begin
+                case(processor_uut.opcode)
+                    6'd0:  begin //JR, ADD, ADDU, SUB SUBU, DIV, SLT, SLTU, SLL, SRL, SRA, AND, OR, XOR, NOR, NOP
+                        case(processor_uut.func)
+                        6'd0: begin //SLL, NOP
+                            if (processor_uut.sha == 5'b0) $strobe("%h:    %h    NOP", processor_uut.pc_out, processor_uut.decode_ir);
+                            else $strobe("%h:    %h    sll  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rt, processor_uut.sha);
+                        end
+                        6'd2: begin //SRL
+                            $strobe("%h:    %h    srl  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rt, processor_uut.sha);
+                        end
+                        6'd3: begin //SRA
+                            $strobe("%h:    %h    sra  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rt, processor_uut.sha);
+                        end
+                        6'd8: begin //JR
+                            $strobe("%h:    %h    jr  %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rs);
+                        end
+                        6'd26: begin //DIV
+                            $strobe("%h:    %h    div  %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd32: begin //ADD
+                            $strobe("%h:    %h    add  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd33: begin //ADDU
+                            $strobe("%h:    %h    addu  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd34: begin //SUB
+                            $strobe("%h:    %h    sub  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd35: begin //SUBU
+                            $strobe("%h:    %h    subu  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd36: begin //AND
+                            $strobe("%h:    %h    and  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd37: begin //OR
+                            $strobe("%h:    %h    or  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd38: begin //XOR
+                            $strobe("%h:    %h    xor  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd39: begin //NOR
+                            $strobe("%h:    %h    nor  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd42: begin //SLT
+                            $strobe("%h:    %h    slt  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        6'd43: begin //SLTU
+                            $strobe("%h:    %h    sltu  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                        end
+                        default: begin 
+                            $strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.decode_ir);
+                            $stop;
+                        end
+                        endcase
                     end
-                    6'd2: begin //SRL
-                        $strobe("%h:    %h    srl  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rt, processor_uut.sha);
+                    6'd1: begin //BLTZ, BGEZ
+                        case(processor_uut.rt)
+                        5'd0: begin //BLTZ
+                            $strobe("%h:    %h    bltz  %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rs, processor_uut.immed);
+                        end
+                        5'd1: begin //BGEZ
+                            $strobe("%h:    %h    bgez  %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rs, processor_uut.immed);
+                        end
+                        default: begin
+                            $strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.decode_ir);
+                            $stop;
+                        end
+                        endcase
                     end
-                    6'd3: begin //SRA
-                        $strobe("%h:    %h    sra  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rt, processor_uut.sha);
+                    6'd2: begin //J
+                        //display the destination address of the jump, not the offset.
+                        $strobe("%h:    %h    j  %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, {processor_uut.pc_out[31-:4], 28'b0}+{processor_uut.target,2'b0});
                     end
-                    6'd8: begin //JR
-                        $strobe("%h:    %h    jr  %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs);
+                    6'd3: begin //JAL
+                        //display the destination address of the jump, not the offset.
+                        $strobe("%h:    %h    jal  %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, {processor_uut.pc_out[31-:4], 28'b0}+{processor_uut.target,2'b0});
                     end
-                    6'd26: begin //DIV
-                        $strobe("%h:    %h    div  %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.rt);
+                    6'd4: begin //BEQ
+                        $strobe("%h:    %h    beq  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rs, processor_uut.rt, processor_uut.immed);
                     end
-                    6'd32: begin //ADD
-                        $strobe("%h:    %h    add  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd5: begin //BNE
+                        $strobe("%h:    %h    bne  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rs, processor_uut.rt, processor_uut.immed);
                     end
-                    6'd33: begin //ADDU
-                        $strobe("%h:    %h    addu  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd6: begin //BLEZ
+                        $strobe("%h:    %h    beq  %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rs, processor_uut.immed);
                     end
-                    6'd34: begin //SUB
-                        $strobe("%h:    %h    sub  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd7: begin //BGTZ
+                        $strobe("%h:    %h    bgtz  %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rs, processor_uut.immed);
                     end
-                    6'd35: begin //SUBU
-                        $strobe("%h:    %h    subu  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd9: begin //ADDIU
+                        $strobe("%h:    %h    addiu  %h, %h, %d",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.rs, processor_uut.immed);
                     end
-                    6'd36: begin //AND
-                        $strobe("%h:    %h    and  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd10: begin //SLTI
+                        $strobe("%h:    %h    slti  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.rs, processor_uut.immed);
                     end
-                    6'd37: begin //OR
-                        $strobe("%h:    %h    or  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd13: begin //ORI
+                        $strobe("%h:    %h    ori  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.rs, processor_uut.immed);
                     end
-                    6'd38: begin //XOR
-                        $strobe("%h:    %h    xor  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd15: begin //LUI
+                        $strobe("%h:    %h    lui  %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.immed);
                     end
-                    6'd39: begin //NOR
-                        $strobe("%h:    %h    nor  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd28: begin //MUL
+                        $strobe("%h:    %h    mul  %h, %h, %h",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rd, processor_uut.rs, processor_uut.rt);
                     end
-                    6'd42: begin //SLT
-                        $strobe("%h:    %h    slt  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd32: begin //LB
+                        $strobe("%h:    %h    lb  %h, %d(%h)",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.immed, processor_uut.rs);
                     end
-                    6'd43: begin //SLTU
-                        $strobe("%h:    %h    sltu  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
+                    6'd35: begin //LW
+                        $strobe("%h:    %h    lw  %h, %d(%h)",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.immed, processor_uut.rs);
                     end
-                    default: begin 
-                        $strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.insn_out);
-                        $stop;
+                    6'd36: begin //LBU
+                        $strobe("%h:    %h    lbu  %h, %d(%h)",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.immed, processor_uut.rs);
                     end
-                    endcase
-                end
-                6'd1: begin //BLTZ, BGEZ
-                    case(processor_uut.rt)
-                    5'd0: begin //BLTZ
-                        $strobe("%h:    %h    bltz  %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.immed);
+                    6'd40: begin //SB
+                        $strobe("%h:    %h    sb  %h, %d(%h)",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.immed, processor_uut.rs);
                     end
-                    5'd1: begin //BGEZ
-                        $strobe("%h:    %h    bgez  %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.immed);
+                    6'd43: begin //SW
+                        $strobe("%h:    %h    sw  %h, %d(%h)",
+                                processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.immed, processor_uut.rs);
                     end
                     default: begin
-                        $strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.insn_out);
+                        $strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.decode_ir);
                         $stop;
                     end
-                    endcase
-                end
-                6'd2: begin //J
-                    //display the destination address of the jump, not the offset.
-                    $strobe("%h:    %h    j  %h",
-                            processor_uut.pc_out, processor_uut.insn_out, {processor_uut.pc_out[31-:4], 28'b0}+{processor_uut.target,2'b0});
-                end
-                6'd3: begin //JAL
-                    //display the destination address of the jump, not the offset.
-                    $strobe("%h:    %h    jal  %h",
-                            processor_uut.pc_out, processor_uut.insn_out, {processor_uut.pc_out[31-:4], 28'b0}+{processor_uut.target,2'b0});
-                end
-                6'd4: begin //BEQ
-                    $strobe("%h:    %h    beq  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.rt, processor_uut.immed);
-                end
-                6'd5: begin //BNE
-                    $strobe("%h:    %h    bne  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.rt, processor_uut.immed);
-                end
-                6'd6: begin //BLEZ
-                    $strobe("%h:    %h    beq  %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.immed);
-                end
-                6'd7: begin //BGTZ
-                    $strobe("%h:    %h    bgtz  %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rs, processor_uut.immed);
-                end
-                6'd9: begin //ADDIU
-                    $strobe("%h:    %h    addiu  %h, %h, %d",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.rs, processor_uut.immed);
-                end
-                6'd10: begin //SLTI
-                    $strobe("%h:    %h    slti  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.rs, processor_uut.immed);
-                end
-                6'd13: begin //ORI
-                    $strobe("%h:    %h    ori  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.rs, processor_uut.immed);
-                end
-                6'd15: begin //LUI
-                    $strobe("%h:    %h    lui  %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.immed);
-                end
-                6'd28: begin //MUL
-                    $strobe("%h:    %h    mul  %h, %h, %h",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rd, processor_uut.rs, processor_uut.rt);
-                end
-                6'd32: begin //LB
-                    $strobe("%h:    %h    lb  %h, %d(%h)",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.immed, processor_uut.rs);
-                end
-                6'd35: begin //LW
-                    $strobe("%h:    %h    lw  %h, %d(%h)",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.immed, processor_uut.rs);
-                end
-                6'd36: begin //LBU
-                    $strobe("%h:    %h    lbu  %h, %d(%h)",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.immed, processor_uut.rs);
-                end
-                6'd40: begin //SB
-                    $strobe("%h:    %h    sb  %h, %d(%h)",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.immed, processor_uut.rs);
-                end
-                6'd43: begin //SW
-                    $strobe("%h:    %h    sw  %h, %d(%h)",
-                            processor_uut.pc_out, processor_uut.insn_out, processor_uut.rt, processor_uut.immed, processor_uut.rs);
-                end
-                default: begin
-                    $strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.insn_out);
-                    $stop;
-                end
-            endcase
+                endcase
+            end
         end
 
         //write logic to grab instruction and its operands
