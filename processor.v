@@ -87,6 +87,7 @@ module processor(
     reg [4:0]dec_rt;
     reg [4:0]dec_rd;
     reg dec_is_jal;
+    reg dec_is_jr;
 
     // Execute wires
     wire [31:0]exe_pc; // We define this as the PC for next instruction to be executed
@@ -122,6 +123,8 @@ module processor(
     wire exe_update_pc;
     wire exe_is_jal;
     wire [31:0]exe_alu_result;
+    wire [31:0]exe_jump_next_pc;
+    wire exe_is_jr;
 
     // Memory wires
     wire [31:0]mem_next_pc;
@@ -269,6 +272,7 @@ module processor(
         .dest_reg_sel_in(dec_dest_reg_sel),
         .write_to_reg_in(dec_write_to_reg),
         .is_jal_in(dec_is_jal),
+        .is_jr_in(dec_is_jr),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
         .A_out(exe_A),
@@ -287,7 +291,8 @@ module processor(
         .rd_out(exe_rd),
         .dest_reg_sel_out(exe_dest_reg_sel),
         .write_to_reg_out(exe_write_to_reg),
-        .is_jal_out(exe_is_jal)
+        .is_jal_out(exe_is_jal),
+        .is_jr_out(exe_is_jr)
     );
 
     sign_extender sign_extender(
@@ -345,10 +350,17 @@ module processor(
         .line0(exe_branch_next_pc),
         .line1(exe_jump_effective_address),
         .select(exe_is_jump),
+        .output_line(exe_jump_next_pc)
+    );
+
+    mux_2_1_32_bit jump_ret_next_pc_mux(
+        .line0(exe_jump_next_pc),
+        .line1(exe_O),
+        .select(exe_is_jr),
         .output_line(exe_next_pc)
     );
 
-    assign exe_update_pc = exe_is_jump | exe_is_branch;
+    assign exe_update_pc = exe_is_jump | exe_is_branch | exe_is_jr;
 
 // ------------------------------ MEMORY STAGE --------------------------------------//
     
@@ -424,7 +436,9 @@ module processor(
         .in_data(mem_data_out),
         .data_size(mem_access_size),
         .sign_extend(mem_memory_sign_extend),
-        .out_data(mem_sign_extend_out)
+        .out_data(wb_D) //.out_data(mem_sign_extend_out) TODO: This may throw some issues 
+                        //when we pipleine... It will be the same for handling the fetch 
+                        //and decode memory handoff
     );
     
 // ------------------------------ WRITE BACK STAGE --------------------------------------//
@@ -434,7 +448,7 @@ module processor(
         .clk(clk),
         .pc_in(mem_next_pc),
         .O_in(mem_alu_result),
-        .D_in(mem_sign_extend_out),
+        //.D_in(mem_sign_extend_out),
         .res_data_sel_in(mem_res_data_sel),
         .write_to_reg_in(mem_write_to_reg),
         .dest_reg_sel_in(mem_dest_reg_sel),
@@ -444,7 +458,7 @@ module processor(
         .is_jal_in(mem_is_jal),
         .pc_out(wb_next_pc),
         .O_out(wb_O),
-        .D_out(wb_D),
+        //.D_out(wb_D),
         .res_data_sel_out(wb_res_data_sel),
         .write_to_reg_out(wb_write_to_reg),
         .dest_reg_sel_out(wb_dest_reg_sel),
@@ -478,6 +492,7 @@ module processor(
         .select(wb_is_jal),
         .output_line(dest_reg)
     );
+
     //assign dest_reg = (wb_dest_reg_sel) ? (wb_rd) : (wb_rt)
 
 
@@ -506,6 +521,7 @@ module processor(
                 dec_rt = rt;
                 dec_rd = rd;
                 dec_is_jal = 0;
+                dec_is_jr = 0;
                 if (((opcode & 6'b111000)>> 3) == 3'h0) begin
                     if ((opcode & 6'b000111) == 3'h0) begin
                         // We are in the SPECIAL Opcode encoding table
@@ -527,8 +543,15 @@ module processor(
                             dec_alu_op = 5;
                             dec_shift_amount = sha;
                         end
-                        else if (func == 6'b101010 || func == 6'b101011) // SLT, SLTU
+                        else if (func == 6'b101010 || func == 6'b101011) begin// SLT, SLTU
                             dec_alu_op = 6;
+                        end
+                        else if (func == 6'b001000) begin // JR
+                            dec_rt = 0;
+                            dec_alu_op = 0; // Essentially just get the return register as the execution output by ading it with the zero reg
+                            dec_is_jr = 1;
+                            dec_write_to_reg = 0;
+                        end
                         else begin
                             dec_illegal_insn = 1;
                         end
@@ -539,11 +562,9 @@ module processor(
                         dec_is_jump = 1;
                         if (opcode == 6'b000011) begin
                             // JAL instruction
-                            //dec_illegal_insn = 1;
                             dec_res_data_sel = 0;
                             dec_is_jal = 1;
                             dec_write_to_reg = 1;
-                            // TODO: We need to store the return address into reg[31]
                         end
                         else begin
                             dec_write_to_reg = 0;

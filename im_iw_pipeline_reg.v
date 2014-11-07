@@ -21,7 +21,7 @@ module im_iw_pipleline_reg(
     input clk,
     input [31:0]pc_in,
     input [31:0]O_in,
-    input [31:0]D_in,
+    //input [31:0]D_in,
     input res_data_sel_in,
     input write_to_reg_in,
     input dest_reg_sel_in,
@@ -31,7 +31,7 @@ module im_iw_pipleline_reg(
     input is_jal_in,
     output reg [31:0]pc_out,
     output reg [31:0]O_out,
-    output reg [31:0]D_out,
+    //output reg [31:0]D_out,
     output reg res_data_sel_out,
     output reg write_to_reg_out,
     output reg dest_reg_sel_out,
@@ -45,7 +45,7 @@ module im_iw_pipleline_reg(
         // write on the negative edge of the clock cycle
         pc_out = pc_in;
         O_out = O_in;
-        D_out = D_in;
+        //D_out = D_in;
         res_data_sel_out = res_data_sel_in;
         write_to_reg_out = write_to_reg_in;
         dest_reg_sel_out = dest_reg_sel_in;

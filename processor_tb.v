@@ -269,7 +269,12 @@ module processor_tb;
         #100;
         // Zero out the contents of the registers
         for (i=0; i <32; i=i+1) begin
-            processor_uut.reg_file.register[i] = 0;
+            if (i == 29) begin
+            	// Initialize the stack pointer to be a large number of bytes from the memory start
+            	processor_uut.reg_file.register[i] = 32'h80020300;
+            end else begin
+            	processor_uut.reg_file.register[i] = 0;
+            end
             #100;
         end
         $monitor("Done initializing the register file");

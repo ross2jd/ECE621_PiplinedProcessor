@@ -42,6 +42,7 @@ add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_branch_taken
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_next_pc
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_update_pc
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_is_jr
 
 # Memory Stage (Coral)
 add wave -position insertpoint -radix decimal -color coral sim:/processor_tb/processor_uut/mem_data_in
@@ -64,6 +65,7 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_ne
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_update_pc
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_is_jal
 
-run 217700 ns
+#run 217700 ns
+run 238100 ns
 #run 229600 ns
 #run 233500 ns
