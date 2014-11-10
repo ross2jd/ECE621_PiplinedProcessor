@@ -94,7 +94,7 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_is
 # CheckVowel start of execution
 #run 224200 ns
 # CheckVowel end of execution
-#run 242400 ns
+#run 845400 ns
 
 # Bubble sort start of execution
 #run 217700 ns
