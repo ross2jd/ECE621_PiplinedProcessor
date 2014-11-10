@@ -22,6 +22,7 @@ module alu_tb;
     reg [5:0] operation; // The arithmatic operation to perform
     wire [31:0] result;
     wire zero;
+    wire neg;
 
     // Instantiate the alu unit under test
     alu alu_uut(
@@ -30,7 +31,8 @@ module alu_tb;
         .operation(operation), // The arithmatic operation to perform
         .shift_amount(op2[5:0]),
         .result(result),
-        .zero(zero)
+        .zero(zero),
+        .neg(neg)
     );
 
 	initial begin
@@ -50,10 +52,10 @@ module alu_tb;
         $strobe("%d / %d = %d", op1, op2, result);
         #100;
         operation = 4;
-        $strobe("%h << %h = %h", op1, op2, result);
+        $strobe("%h << %h = %h", op2, op2[5:0], result);
         #100;
         operation = 5;
-        $strobe("%h >> %h = %h", op1, op2, result);
+        $strobe("%h >> %h = %h", op2, op2[5:0], result);
         #100;
         operation = 6;
         $strobe("%d < %d = %d", op1, op2, result);
@@ -71,7 +73,7 @@ module alu_tb;
         $strobe("%h nor %h = %h", op1, op2, result);
         #100;
         operation = 11;
-        $strobe("%b >>> %b = %b", op1, op2, result);
+        $strobe("%h >>> %h = %h", op2, op2[5:0], result);
         #100;
         operation = 12;
         $strobe("LUI %b = %b", op2, result);
@@ -91,10 +93,10 @@ module alu_tb;
         $strobe("%d / %d = %d", op1, op2, result);
         #100;
         operation = 4;
-        $strobe("%h << %h = %h", op1, op2, result);
+        $strobe("%h << %h = %h", op2, op2[5:0], result);
         #100;
         operation = 5;
-        $strobe("%h >> %h = %h", op1, op2, result);
+        $strobe("%h >> %h = %h", op2, op2[5:0], result);
         #100;
         operation = 6;
         $strobe("%d < %d = %d", op1, op2, result);
@@ -112,7 +114,7 @@ module alu_tb;
         $strobe("%h nor %h = %h", op1, op2, result);
         #100;
         operation = 11;
-        $strobe("%b >>> %b = %b", op1, op2, result);
+        $strobe("%h >>> %h = %h", op2, op2[5:0], result);
         #100;
         operation = 12;
         $strobe("LUI %b = %b", op2, result);
@@ -132,10 +134,10 @@ module alu_tb;
         $strobe("%d / %d = %d", op1, op2, result);
         #100;
         operation = 4;
-        $strobe("%h << %h = %h", op1, op2, result);
+        $strobe("%h << %h = %h", op2, op2[5:0], result);
         #100;
         operation = 5;
-        $strobe("%h >> %h = %h", op1, op2, result);
+        $strobe("%h >> %h = %h", op2, op2[5:0], result);
         #100;
         operation = 6;
         $strobe("%d < %d = %d", op1, op2, result);
@@ -153,7 +155,7 @@ module alu_tb;
         $strobe("%h nor %h = %h", op1, op2, result);
         #100;
         operation = 11;
-        $strobe("%b >>> %b = %b", op1, op2, result);
+        $strobe("%h >>> %h = %h", op2, op2[5:0], result);
         #100;
         operation = 12;
         $strobe("LUI %b = %b", op2, result);
@@ -173,10 +175,10 @@ module alu_tb;
         $strobe("%d / %d = %d", op1, op2, result);
         #100;
         operation = 4;
-        $strobe("%h << %h = %h", op1, op2, result);
+        $strobe("%h << %h = %h", op2, op2[5:0], result);
         #100;
         operation = 5;
-        $strobe("%h >> %h = %h", op1, op2, result);
+        $strobe("%h >> %h = %h", op2, op2[5:0], result);
         #100;
         operation = 6;
         $strobe("%d < %d = %d", op1, op2, result);
@@ -194,10 +196,16 @@ module alu_tb;
         $strobe("%h nor %h = %h", op1, op2, result);
         #100;
         operation = 11;
-        $strobe("%b >>> %b = %b", op1, op2, result);
+        $strobe("%h >>> %h = %h", op2, op2[5:0], result);
         #100;
         operation = 12;
         $strobe("LUI %b = %b", op2, result);
+        #100;
+
+        // TESTING SRA
+        op2 = 32'hffffe808;
+        operation = 11;
+        $strobe("%h >>> %h = %h", op2, op2[5:0], result);
         #100;
 	end
     always begin

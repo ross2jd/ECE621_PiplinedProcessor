@@ -360,7 +360,7 @@ module processor(
         .output_line(exe_next_pc)
     );
 
-    assign exe_update_pc = exe_is_jump | exe_is_branch | exe_is_jr;
+    assign exe_update_pc = exe_is_jump | exe_branch_taken | exe_is_jr;
 
 // ------------------------------ MEMORY STAGE --------------------------------------//
     
@@ -542,6 +542,11 @@ module processor(
                         else if (func == 6'b000010) begin // SLL
                             dec_alu_op = 5;
                             dec_shift_amount = sha;
+                        end
+                        else if (func == 6'b000011) begin // SRA
+                            dec_alu_op = 11;
+                            dec_shift_amount = sha;
+                            dec_illegal_insn = 1;
                         end
                         else if (func == 6'b101010 || func == 6'b101011) begin// SLT, SLTU
                             dec_alu_op = 6;

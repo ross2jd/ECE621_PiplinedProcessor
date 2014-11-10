@@ -295,7 +295,7 @@ module processor_tb;
         #100;
 
         //$monitor("%h:    %h   ", processor_uut.pc_out, processor_uut.decode_ir);
-        while (processor_uut.pc <= highest_address) begin
+        while (processor_uut.pc != 0) begin //processor_uut.pc <= highest_address) begin
             @(posedge clk);
             if (processor_uut.cur_pipe_state == 3'b001) begin
                 case(processor_uut.opcode)
@@ -460,8 +460,11 @@ module processor_tb;
 
         //write logic to grab instruction and its operands
         //$monitor("Instruction = %h", processor_uut.decoder.insn_in);
-        #100;
-        $stop;
+        //#100;
+        //$stop;
+        processor_uut.stall = 1;
+        processor_uut.fetch.pc = 32'h80020000;
+        $strobe("Program done running!");
         
     end
     

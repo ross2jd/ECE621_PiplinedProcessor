@@ -27,10 +27,10 @@ module branch_resolve(
 	always @(zero or neg or branch_type or is_branch) begin
 		if (is_branch == 1'b1) begin
 			case (branch_type)
-				0: branch_taken = zero == 0 ? 1 : 0; // BEQ
-				1: branch_taken = zero != 0 ? 1 : 0; // BNE
-				2: branch_taken = (neg | zero) == 0 ? 1 : 0; // BLEZ
-				3: branch_taken = neg != 0 ? 1 : 0; // BGTZ
+				2'b00: branch_taken = zero;  //zero == 0 ? 1 : 0; // BEQ
+				2'b01: branch_taken = !zero; //zero == 0 ? 0 : 1; // BNE
+				2'b10: branch_taken = (neg | zero) == 0 ? 1 : 0; // BLEZ
+				2'b11: branch_taken = neg == 0 ? 0 : 1; // BGTZ
 			endcase
 		end else begin
 			branch_taken = 0;
