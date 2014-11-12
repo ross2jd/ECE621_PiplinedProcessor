@@ -99,4 +99,4 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_is
 # Bubble sort start of execution
 #run 217700 ns
 #Bubble sort end of exectuion
-#run 814600 ns
+run 817600 ns
