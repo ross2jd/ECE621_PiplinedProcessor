@@ -60,8 +60,8 @@ module processor_tb;
         $monitor("Starting the SREC parser...");
         
         // Open the SREC file to read
-        //fh = $fopen("D:/Git_Repositories/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
-        fh = $fopen("D:/GitHub/ECE621_PiplinedProcessor/CheckVowel.srec", "r");
+        fh = $fopen("D:/Git_Repositories/ECE621_PiplinedProcessor/SimpleAdd.srec", "r");
+        //fh = $fopen("D:/GitHub/ECE621_PiplinedProcessor/SimpleAdd.srec", "r");
         //fh = $fopen("D:/Dropbox/Grad/01 Fall14/ECE621/Labs/L1/code/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
         // Start the clock high
 		clk = 0;
@@ -287,17 +287,19 @@ module processor_tb;
         #100;
         // Set the stall in to be 0 just read out the pc, rw, and access size.
         srec_parse = 0;
-        #200;
-        processor_uut.stall = 1;
         processor_uut.fetch.pc = 32'h80020000;
-        processor_uut.cur_pipe_state = 3'b100;
-        processor_uut.next_pipe_state = 3'b000;
+        //#200;
+        //processor_uut.stall = 1;
+        // processor_uut.cur_pipe_state = 3'b100;
+        // processor_uut.next_pipe_state = 3'b000;
         #100;
+        processor_uut.stall = 0;
+        //#100;
 
         //$monitor("%h:    %h   ", processor_uut.pc_out, processor_uut.decode_ir);
-        while (processor_uut.pc != 0) begin //processor_uut.pc <= highest_address) begin
+        while (processor_uut.fetch.pc != 0) begin //processor_uut.pc <= highest_address) begin
             @(posedge clk);
-            if (processor_uut.cur_pipe_state == 3'b001) begin
+            if (processor_uut.stall == 0) begin
                 case(processor_uut.opcode)
                     6'd0:  begin //JR, ADD, ADDU, SUB SUBU, DIV, SLT, SLTU, SLL, SRL, SRA, AND, OR, XOR, NOR, NOP
                         case(processor_uut.func)
@@ -451,10 +453,12 @@ module processor_tb;
                                 processor_uut.pc_out, processor_uut.decode_ir, processor_uut.rt, processor_uut.immed, processor_uut.rs);
                     end
                     default: begin
-                        $strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.decode_ir);
-                        $stop;
+                        //$strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.decode_ir);
+                        //$stop;
                     end
                 endcase
+            end else begin
+                $strobe("STALL!");
             end
         end
 

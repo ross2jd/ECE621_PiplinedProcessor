@@ -23,7 +23,7 @@ module if_id_pipleline_reg(
     input clk,
     input [31:0]pc_in,
     //input [31:0]ir_in,
-    output reg [31:0]pc_out
+    output reg [31:0]pc_out    
     //output reg [31:0]ir_out
 );
 

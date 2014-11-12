@@ -30,7 +30,7 @@ module reg_file(
 	// MIPS has 32 registers each of 32 bits in side
 	reg [31:0] register[0:31];
 
-	always @(negedge clk) begin
+	always @(dest or destVal) begin
 		// This is where we will do our writes
 		if (write_enable == 1'b1) begin
 			case (dest)
@@ -66,7 +66,7 @@ module reg_file(
 				5'd29 : register[29] = destVal;
 				5'd30 : register[30] = destVal;
 				5'd31 : register[31] = destVal;
-				default : register[0] = 1;
+				default : register[0] = 0;
 			endcase
 			//register[dest] = destVal;
 			//register[0] = 0; // r0 is always 0

@@ -19,6 +19,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 module im_iw_pipleline_reg(
     input clk,
+    input stall_in,
     input [31:0]pc_in,
     input [31:0]O_in,
     //input [31:0]D_in,
@@ -29,6 +30,7 @@ module im_iw_pipleline_reg(
     input [4:0]rd_in,
     input update_pc_in,
     input is_jal_in,
+    output reg stall_out,
     output reg [31:0]pc_out,
     output reg [31:0]O_out,
     //output reg [31:0]D_out,
@@ -43,15 +45,29 @@ module im_iw_pipleline_reg(
 
     always @(negedge clk) begin
         // write on the negative edge of the clock cycle
-        pc_out = pc_in;
-        O_out = O_in;
-        //D_out = D_in;
-        res_data_sel_out = res_data_sel_in;
-        write_to_reg_out = write_to_reg_in;
-        dest_reg_sel_out = dest_reg_sel_in;
-        rd_out = rd_in;
-        rt_out = rt_in;
-        update_pc_out = update_pc_in;
-        is_jal_out = is_jal_in;
+        if (stall_in == 0) begin
+            pc_out = pc_in;
+            O_out = O_in;
+            //D_out = D_in;
+            res_data_sel_out = res_data_sel_in;
+            write_to_reg_out = write_to_reg_in;
+            dest_reg_sel_out = dest_reg_sel_in;
+            rd_out = rd_in;
+            rt_out = rt_in;
+            update_pc_out = update_pc_in;
+            is_jal_out = is_jal_in;
+        end else begin
+            pc_out = 0;
+            O_out = 0;
+            //D_out = 0;
+            res_data_sel_out = 0;
+            write_to_reg_out = 0;
+            dest_reg_sel_out = 0;
+            rd_out = 0;
+            rt_out = 0;
+            update_pc_out = 0;
+            is_jal_out = 0;
+        end
+        stall_out = stall_in;
     end
 endmodule

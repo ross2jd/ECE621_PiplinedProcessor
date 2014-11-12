@@ -45,11 +45,20 @@ module fetch(
             0:  begin
                     // Increment the pc by 4 so we read the next 
                     // instruction on the next clock cycle.
-                    pc = pc_in; // TODO: Fix this when we pipeline!
+                    //pc = pc_in; // TODO: Fix this when we pipeline!
+                    if (update_pc == 1'b1)
+                        pc = pc_in;
+                    else begin
+                        pc = next_pc;
+                    end
                 end
             1:  begin
                     // TODO: Stalls not implemented
-                    pc = pc;
+                    if (update_pc == 1'b1)
+                        pc = pc_in;
+                    else begin
+                        pc = pc;
+                    end
                 end
             default:    begin
                             $display("Unknown signal!");

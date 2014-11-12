@@ -20,7 +20,7 @@ module decode(
     input clk,
     input stall,
     input [31:0]insn_in,          // Instruction bits to decode
-    input [31:0]pc_in,     // Program counter for the instruction.
+    //input [31:0]pc_in,     // Program counter for the instruction.
     
     output wire [4:0]rs,
     output wire [4:0]rt,
@@ -30,19 +30,19 @@ module decode(
     output wire [15:0]immed,
     output wire [25:0]target,
     output wire [5:0]opcode,
-    output wire [31:0]pc_out,
+    //output wire [31:0]pc_out,
     output wire [31:0]insn_out
 );
     //reg illegal_insn;
-    reg [31:0] pc_in_r;
-    assign pc_out = pc_in_r;
-    assign insn_out = (stall)? 32'b0: insn_in;
+    //reg [31:0] pc_in_r;
+    //assign pc_out = pc_in_r;
+    //assign insn_out = (stall)? 32'b0: insn_in;
     
     assign {opcode, rs, rt, rd, sha, func} = insn_in;
     assign target = insn_in[25:0];
     assign immed = insn_in[15:0];
     
-    always @ (posedge clk) pc_in_r <= pc_in;
+    //always @ (posedge clk) pc_in_r <= pc_in;
        
 
     //We dont need to do this part of the decode here, the decoder is only responsible

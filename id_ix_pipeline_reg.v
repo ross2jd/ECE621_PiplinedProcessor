@@ -23,6 +23,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 module id_ix_pipleline_reg(
     input clk,
+    input stall_in,
     input [31:0]pc_in,
     input [31:0]ir_in,
     input [31:0]A_in,
@@ -43,6 +44,7 @@ module id_ix_pipleline_reg(
     input write_to_reg_in,
     input is_jal_in,
     input is_jr_in,
+    output reg stall_out,
     output reg [31:0]pc_out,
     output reg [31:0]ir_out,
     output reg [31:0]A_out,
@@ -67,25 +69,49 @@ module id_ix_pipleline_reg(
 
     always @(negedge clk) begin
         // write on the negative edge of the clock cycle
-        pc_out = pc_in;
-        ir_out = ir_in;
-        A_out = A_in;
-        B_out = B_in;
-        alu_op_out = alu_op_in;
-        op2_sel_out = op2_sel_in;
-        is_branch_out = is_branch_in;
-        is_jump_out = is_jump_in;
-        shift_amount_out = shift_amount_in;
-        branch_type_out = branch_type_in;
-        access_size_out = access_size_in;
-        rw_out = rw_in;
-        memory_sign_extend_out = memory_sign_extend_in;
-        res_data_sel_out = res_data_sel_in;
-        rd_out = rd_in;
-        rt_out = rt_in;
-        dest_reg_sel_out = dest_reg_sel_in;
-        write_to_reg_out = write_to_reg_in;
-        is_jal_out = is_jal_in;
-        is_jr_out = is_jr_in;
+        if (stall_in == 0) begin
+            pc_out = pc_in;
+            ir_out = ir_in;
+            A_out = A_in;
+            B_out = B_in;
+            alu_op_out = alu_op_in;
+            op2_sel_out = op2_sel_in;
+            is_branch_out = is_branch_in;
+            is_jump_out = is_jump_in;
+            shift_amount_out = shift_amount_in;
+            branch_type_out = branch_type_in;
+            access_size_out = access_size_in;
+            rw_out = rw_in;
+            memory_sign_extend_out = memory_sign_extend_in;
+            res_data_sel_out = res_data_sel_in;
+            rd_out = rd_in;
+            rt_out = rt_in;
+            dest_reg_sel_out = dest_reg_sel_in;
+            write_to_reg_out = write_to_reg_in;
+            is_jal_out = is_jal_in;
+            is_jr_out = is_jr_in;
+        end else begin
+            pc_out = 0;
+            ir_out = 0;
+            A_out = 0;
+            B_out = 0;
+            alu_op_out = 0;
+            op2_sel_out = 0;
+            is_branch_out = 0;
+            is_jump_out = 0;
+            shift_amount_out = 0;
+            branch_type_out = 0;
+            access_size_out = 0;
+            rw_out = 0;
+            memory_sign_extend_out = 0;
+            res_data_sel_out = 0;
+            rd_out = 0;
+            rt_out = 0;
+            dest_reg_sel_out = 0;
+            write_to_reg_out = 0;
+            is_jal_out = 0;
+            is_jr_out = 0;
+        end
+        stall_out = stall_in;
     end
 endmodule

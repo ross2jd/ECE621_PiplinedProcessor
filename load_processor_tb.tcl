@@ -8,14 +8,29 @@ add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/sre
 add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/cur_pipe_state
 #add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/next_pipe_state
 
+# Stall Signals (Purple)
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/exe_dest_reg_stall
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/exe_dest_reg_sel
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/exe_rd
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/exe_rt
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/mem_dest_reg_stall
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_reg_source0_stall
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_reg_source1_stall
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_is_jump
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_jump_counter
+
 # Fetch Stage (Plum)
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/stall
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/pc
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch_next_pc
-
+add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/pc
+add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/next_pc
+add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/stall_in
+add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/pc_out
 
 # Decode Stage (Cyan)
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/decode_pc
+add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/fetch_ir
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/decode_ir
 add wave -position insertpoint -radix unsigned -color cyan sim:/processor_tb/processor_uut/rs
 add wave -position insertpoint -radix unsigned -color cyan sim:/processor_tb/processor_uut/rt
@@ -34,6 +49,9 @@ add wave -position insertpoint -radix decimal -color green sim:/processor_tb/pro
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_zero
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_neg
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_alu_op
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_rd
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_rt
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_dest_reg_sel
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_is_branch
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_is_jump
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_branch_effective_address
@@ -69,34 +87,38 @@ add wave -position insertpoint -radix unsigned -color blue sim:/processor_tb/pro
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_next_pc
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_update_pc
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_is_jal
+add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_file_write_enable
 
 
 # SimpleAdd start of execution
 #run 45500 ns
-# SimpleAdd end of execution
+# SimpleAdd end of execution - unpipeline
 #run 54200 ns
+# SimpleAdd end of execution - pipelined
+run 48900 ns
+
 
 # SumArray start of execution
 #run 94300 ns
-# SumArray end of execution
+# SumArray end of execution - unpipeline
 #run 226000 ns
 
 # SimpleIf start of execution
 #run 72200 ns
-# SimpleIf end of execution
+# SimpleIf end of execution - unpipeline
 #run 85400 ns
 
 # SwapShift start of execution
 #run 122900 ns
-# SwapShift end of execution
+# SwapShift end of execution - unpipeline
 #run 150600 ns
 
 # CheckVowel start of execution
 #run 224200 ns
-# CheckVowel end of execution
+# CheckVowel end of execution - unpipeline
 #run 845400 ns
 
 # Bubble sort start of execution
 #run 217700 ns
-#Bubble sort end of exectuion
+#Bubble sort end of exectuion - unpipeline
 #run 814600 ns
