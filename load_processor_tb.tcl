@@ -81,6 +81,7 @@ add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/wb_D
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_res_data_sel
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_rw
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_next_pc
+add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_update_pc
 
 # Write back stage (Blue)
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_res_data_sel
@@ -101,7 +102,7 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 # SimpleAdd end of execution - unpipeline
 #run 54200 ns
 # SimpleAdd end of execution - pipelined (no forwarding)
-#run 48500 ns
+run 48500 ns
 
 #run 97700 ns
 
@@ -117,12 +118,14 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 # SimpleIf end of execution - unpipeline
 #run 85400 ns
 # SimpleIf end of execution - pipelined (no forwarding)
-run 77100 ns
+#run 77100 ns
 
 # SwapShift start of execution
 #run 122900 ns
 # SwapShift end of execution - unpipeline
 #run 150600 ns
+# SwapShift end of execution - pipelined (no forwarding)
+#run 133900 ns
 
 # CheckVowel start of execution
 #run 224200 ns

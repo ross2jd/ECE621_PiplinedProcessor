@@ -75,6 +75,8 @@ module processor(
     wire [4:0]dest_reg;
     reg [4:0]reg_file_dest_reg;
     reg [31:0]reg_file_dest_val;
+    wire update_pc;
+    wire [31:0]next_pc;
 
     // Decode control signals
     reg dec_dest_reg_sel;
@@ -203,13 +205,15 @@ module processor(
         .output_line(insn_access_size)
     );
     
-    
+    assign update_pc = (exe_is_jal | mem_is_jal) ? (mem_update_pc) : (exe_update_pc);
+    assign next_pc = (exe_is_jal | mem_is_jal) ? (mem_next_pc) : (exe_next_pc);
+
     // Instantiate the fetch module
     fetch fetch(
         .clk_in(clk),
         .stall_in(stall),
-        .pc_in(exe_next_pc), //wb_next_pc),
-        .update_pc(exe_update_pc), // wb_update_pc),
+        .pc_in(next_pc), //wb_next_pc),
+        .update_pc(update_pc), // wb_update_pc),
         .pc_out(pc),
         .next_pc(fetch_next_pc),
         .rw_out(fetch_rw),
@@ -761,7 +765,7 @@ module processor(
                 end
             end
             // ---------------------- BRANCH FLUSH LOGIC --------------------------- //
-            if (exe_branch_taken == 1'b1 || exe_is_jump == 1'b1) begin
+            if (exe_branch_taken == 1'b1 || exe_is_jump == 1'b1 || mem_is_jal == 1'b1) begin
                 // If we have a taken branch we want the fetched instruction to be a NOP.
                 next_insn_is_nop = 1;
             end
@@ -793,7 +797,7 @@ module processor(
         //     // endcase
         // end
     end
-    always @(dest_reg or wb_data) begin
+    always @(dest_reg or wb_data or wb_write_to_reg) begin
         if (wb_write_to_reg == 1'b1) begin // TODO: Might be a problem here?
             reg_file_write_enable = 1;
             reg_file_dest_reg = dest_reg;

@@ -60,7 +60,7 @@ module processor_tb;
         $monitor("Starting the SREC parser...");
         
         // Open the SREC file to read
-        fh = $fopen("D:/Git_Repositories/ECE621_PiplinedProcessor/SimpleIf.srec", "r");
+        fh = $fopen("D:/Git_Repositories/ECE621_PiplinedProcessor/SimpleAdd.srec", "r");
         //fh = $fopen("D:/GitHub/ECE621_PiplinedProcessor/SimpleAdd.srec", "r");
         //fh = $fopen("D:/Dropbox/Grad/01 Fall14/ECE621/Labs/L1/code/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
         // Start the clock high
