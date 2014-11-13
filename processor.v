@@ -73,6 +73,8 @@ module processor(
     wire [31:0]dec_A;
     wire [31:0]dec_B;
     wire [4:0]dest_reg;
+    reg [4:0]reg_file_dest_reg;
+    reg [31:0]reg_file_dest_val;
 
     // Decode control signals
     reg dec_dest_reg_sel;
@@ -241,8 +243,8 @@ module processor(
         .write_enable(reg_file_write_enable),//reg_file_write_enable),
         .source1(rs),
         .source2(rt),
-        .dest(dest_reg),
-        .destVal(wb_data),
+        .dest(reg_file_dest_reg),//dest_reg),
+        .destVal(reg_file_dest_val), //wb_data),
         .s1val(dec_A),
         .s2val(dec_B)
     );
@@ -495,30 +497,34 @@ module processor(
         .is_jal_out(wb_is_jal)
     );
 
-    // Mux for selecting between which data we should be writing back to the register
-    mux_2_1_32_bit wb_data_mux(
-        .line0(wb_O),
-        .line1(wb_D),
-        .select(wb_res_data_sel),
-        .output_line(wb_data)
-    );
+    // // Mux for selecting between which data we should be writing back to the register
+    // mux_2_1_32_bit wb_data_mux(
+    //     .line0(wb_O),
+    //     .line1(wb_D),
+    //     .select(wb_res_data_sel),
+    //     .output_line(wb_data)
+    // );
 
-    // // Instantiate a mux for selecting which destination to choose
-    mux_2_1_5_bit dest_reg_mux(
-        .line0(wb_rd),
-        .line1(wb_rt),
-        .select(wb_dest_reg_sel),
-        .output_line(wb_dest_reg)
-    );
+    // // // Instantiate a mux for selecting which destination to choose
+    // mux_2_1_5_bit dest_reg_mux(
+    //     .line0(wb_rd),
+    //     .line1(wb_rt),
+    //     .select(wb_dest_reg_sel),
+    //     .output_line(wb_dest_reg)
+    // );
 
     // Instantiate a mux for selecting between the destination register in the previous
     // mux or selecting the return address register (31) if we have a JAL
-    mux_2_1_5_bit sel_ra_reg_mux(
-        .line0(wb_dest_reg),
-        .line1(5'd31),
-        .select(wb_is_jal),
-        .output_line(dest_reg)
-    );
+    // mux_2_1_5_bit sel_ra_reg_mux(
+    //     .line0(wb_dest_reg),
+    //     .line1(5'd31),
+    //     .select(wb_is_jal),
+    //     .output_line(dest_reg)
+    // );
+
+    assign wb_data = (wb_res_data_sel) ? (wb_D) : (wb_O);
+    assign wb_dest_reg = (wb_dest_reg_sel) ? (wb_rt) : (wb_rd);
+    assign dest_reg = (wb_is_jal) ? (5'd31) : (wb_dest_reg);
 
     //assign dest_reg = (wb_dest_reg_sel) ? (wb_rd) : (wb_rt)
 
@@ -787,9 +793,11 @@ module processor(
         //     // endcase
         // end
     end
-    always @(wb_write_to_reg or dest_reg or wb_data) begin
+    always @(dest_reg or wb_data) begin
         if (wb_write_to_reg == 1'b1) begin // TODO: Might be a problem here?
             reg_file_write_enable = 1;
+            reg_file_dest_reg = dest_reg;
+            reg_file_dest_val = wb_data;
         end
         else begin
             reg_file_write_enable = 0;

@@ -20,6 +20,11 @@ add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec
 add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_jump_counter
 add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/next_insn_is_nop
 
+#TEST
+add wave -position insertpoint -color orange sim:/processor_tb/processor_uut/reg_file/dest
+add wave -position insertpoint -color orange sim:/processor_tb/processor_uut/reg_file/destVal
+add wave -position insertpoint -color orange sim:/processor_tb/processor_uut/reg_file/write_enable
+
 # Fetch Stage (Plum)
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/stall
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/pc
@@ -72,7 +77,7 @@ add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_
 add wave -position insertpoint -radix decimal -color coral sim:/processor_tb/processor_uut/mem_data_in
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_addr_in
 add wave -position insertpoint -radix decimal -color coral sim:/processor_tb/processor_uut/mem_alu_result
-add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_sign_extend_out
+add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/wb_D
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_res_data_sel
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_rw
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_next_pc
@@ -95,20 +100,23 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 #run 45500 ns
 # SimpleAdd end of execution - unpipeline
 #run 54200 ns
-# SimpleAdd end of execution - pipelined
+# SimpleAdd end of execution - pipelined (no forwarding)
 #run 48500 ns
 
+#run 97700 ns
 
 # SumArray start of execution
 #run 94300 ns
 # SumArray end of execution - unpipeline
 #run 226000 ns
+# SumArray end of execution - pipelined (no forwarding)
+#run 158500 ns
 
 # SimpleIf start of execution
 #run 72200 ns
 # SimpleIf end of execution - unpipeline
 #run 85400 ns
-# SimpleIf end of execution - pipelined
+# SimpleIf end of execution - pipelined (no forwarding)
 run 77100 ns
 
 # SwapShift start of execution
