@@ -102,7 +102,7 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 # SimpleAdd end of execution - unpipeline
 #run 54200 ns
 # SimpleAdd end of execution - pipelined (no forwarding)
-run 48500 ns
+#run 48500 ns
 
 #run 97700 ns
 
@@ -131,8 +131,12 @@ run 48500 ns
 #run 224200 ns
 # CheckVowel end of execution - unpipeline
 #run 845400 ns
+# CheckVowel end of execution - pipelined (no forwarding)
+#run 485800 ns
 
 # Bubble sort start of execution
-#run 217700 ns
+#run 218000 ns
 #Bubble sort end of exectuion - unpipeline
 #run 814600 ns
+# Bubble sort end of execution - pipelined (no forwarding)
+#run 492400 ns
