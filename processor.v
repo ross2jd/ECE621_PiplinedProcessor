@@ -730,20 +730,20 @@ module processor(
                     stall = 1;
                     fetch.pc = pc;
                 end
-                else if (dec_is_jump || dec_jump_counter != 0) begin
-                    if (dec_jump_counter == 0) begin
-                        stall = 0; // We want to stall the instruction after the jump
-                        dec_jump_counter = dec_jump_counter + 1;
-                    end
-                    else if (dec_jump_counter <= 3) begin
-                        dec_jump_counter = dec_jump_counter + 1;
-                        stall = 1;
-                        fetch.pc = pc;
-                    end else begin
-                        dec_jump_counter = 0;
-                        stall = 0;
-                    end
-                end
+                // else if (dec_is_jump || dec_jump_counter != 0) begin
+                //     if (dec_jump_counter == 0) begin
+                //         stall = 0; // We want to stall the instruction after the jump
+                //         dec_jump_counter = dec_jump_counter + 1;
+                //     end
+                //     else if (dec_jump_counter <= 3) begin
+                //         dec_jump_counter = dec_jump_counter + 1;
+                //         stall = 1;
+                //         fetch.pc = pc;
+                //     end else begin
+                //         dec_jump_counter = 0;
+                //         stall = 0;
+                //     end
+                // end
                 else begin
                     stall = 0;
                 end
@@ -752,7 +752,7 @@ module processor(
     end
 
     always @(decode_pc) begin
-        if (srec_parse == 0 && stall == 0 && dec_is_jump != 1) begin
+        if (srec_parse == 0 && stall == 0) begin
             // If we don't have a stall we want to update the decode_ir
             decode_ir = fetch_ir;
         end 

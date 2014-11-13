@@ -95,7 +95,7 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 # SimpleAdd end of execution - unpipeline
 #run 54200 ns
 # SimpleAdd end of execution - pipelined
-run 48900 ns
+run 48500 ns
 
 
 # SumArray start of execution
