@@ -24,6 +24,7 @@
 module id_ix_pipleline_reg(
     input clk,
     input stall_in,
+    input flush,
     input [31:0]pc_in,
     input [31:0]ir_in,
     input [31:0]A_in,
@@ -69,7 +70,7 @@ module id_ix_pipleline_reg(
 
     always @(negedge clk) begin
         // write on the negative edge of the clock cycle
-        if (stall_in == 0) begin
+        if (stall_in == 0 && flush == 0) begin
             pc_out = pc_in;
             ir_out = ir_in;
             A_out = A_in;

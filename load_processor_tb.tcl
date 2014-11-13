@@ -18,19 +18,20 @@ add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec
 add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_reg_source1_stall
 add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_is_jump
 add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_jump_counter
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/next_insn_is_nop
 
 # Fetch Stage (Plum)
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/stall
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/pc
-add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch_next_pc
+#add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch_next_pc
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/pc
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/next_pc
-add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/stall_in
+#add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/stall_in
 add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch/pc_out
 
 # Decode Stage (Cyan)
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/decode_pc
-add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/fetch_ir
+#add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/fetch_ir
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/decode_ir
 add wave -position insertpoint -radix unsigned -color cyan sim:/processor_tb/processor_uut/rs
 add wave -position insertpoint -radix unsigned -color cyan sim:/processor_tb/processor_uut/rt
@@ -95,7 +96,7 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 # SimpleAdd end of execution - unpipeline
 #run 54200 ns
 # SimpleAdd end of execution - pipelined
-run 48500 ns
+#run 48500 ns
 
 
 # SumArray start of execution
@@ -107,6 +108,8 @@ run 48500 ns
 #run 72200 ns
 # SimpleIf end of execution - unpipeline
 #run 85400 ns
+# SimpleIf end of execution - pipelined
+run 77100 ns
 
 # SwapShift start of execution
 #run 122900 ns

@@ -47,6 +47,7 @@ module processor(
     wire fetch_rw;
     wire insn_rw;
     reg reg_file_write_enable;
+    reg next_insn_is_nop;
     
     // Address lines
     wire [31:0]pc;
@@ -63,6 +64,7 @@ module processor(
 
     // Fetch wires
     wire [31:0]fetch_next_pc;
+    wire [31:0]pre_fetch_ir;
     wire [31:0]fetch_ir;
 
     // Decode wires
@@ -204,8 +206,8 @@ module processor(
     fetch fetch(
         .clk_in(clk),
         .stall_in(stall),
-        .pc_in(wb_next_pc),
-        .update_pc(wb_update_pc),
+        .pc_in(exe_next_pc), //wb_next_pc),
+        .update_pc(exe_update_pc), // wb_update_pc),
         .pc_out(pc),
         .next_pc(fetch_next_pc),
         .rw_out(fetch_rw),
@@ -214,7 +216,7 @@ module processor(
     
     // Instantiate the instruction memory module
     memory insn_memory(
-        .data_out(fetch_ir),
+        .data_out(pre_fetch_ir),
         .address(insn_address),
         .data_in(srec_data_in), // We can tie the srec_data_in wire to this port since we should never be writing to instruction memory unless we are srec parsing
         .write(insn_rw),
@@ -244,6 +246,8 @@ module processor(
         .s1val(dec_A),
         .s2val(dec_B)
     );
+
+    assign fetch_ir = (next_insn_is_nop) ? (32'h0) : (pre_fetch_ir);
     
     // Instantiate the decode module
     decode decoder(
@@ -264,11 +268,13 @@ module processor(
     );
 
 // ------------------------------ EXECUTE STAGE --------------------------------------//
-
+    assign exe_flush_pipeline = exe_branch_taken | exe_is_jump;
+    
     // Instatiate the ID/IX pipeline register
     id_ix_pipleline_reg id_ix_pipleline_reg(
         .clk(clk),
         .stall_in(stall),
+        .flush(exe_flush_pipeline),
         .pc_in(decode_pc),
         .ir_in(decode_ir),
         .A_in(dec_A),
@@ -748,6 +754,14 @@ module processor(
                     stall = 0;
                 end
             end
+            // ---------------------- BRANCH FLUSH LOGIC --------------------------- //
+            if (exe_branch_taken == 1'b1 || exe_is_jump == 1'b1) begin
+                // If we have a taken branch we want the fetched instruction to be a NOP.
+                next_insn_is_nop = 1;
+            end
+            else begin
+                next_insn_is_nop = 0;
+            end
         end
     end
 
@@ -755,7 +769,10 @@ module processor(
         if (srec_parse == 0 && stall == 0) begin
             // If we don't have a stall we want to update the decode_ir
             decode_ir = fetch_ir;
-        end 
+        end
+        if (exe_branch_taken == 1'b1) begin
+            decode_ir = 32'b0;
+        end
         // if (srec_parse == 0) begin
         //     cur_pipe_state = next_pipe_state;
         //     // case (cur_pipe_state)
@@ -770,7 +787,6 @@ module processor(
         //     // endcase
         // end
     end
-
     always @(wb_write_to_reg or dest_reg or wb_data) begin
         if (wb_write_to_reg == 1'b1) begin // TODO: Might be a problem here?
             reg_file_write_enable = 1;
