@@ -137,6 +137,6 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 # Bubble sort start of execution
 #run 218000 ns
 #Bubble sort end of exectuion - unpipeline
-#run 814600 ns
+#run 814700 ns
 # Bubble sort end of execution - pipelined (no forwarding)
 #run 492400 ns
