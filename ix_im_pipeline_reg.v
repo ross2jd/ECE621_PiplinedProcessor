@@ -33,6 +33,7 @@ module ix_im_pipleline_reg(
     input write_to_reg_in,
     input update_pc_in,
     input is_jal_in,
+    input wm_data_bypass_in,
     output reg stall_out,
     output reg [31:0]pc_out,
     output reg [31:0]O_out,
@@ -46,7 +47,8 @@ module ix_im_pipleline_reg(
     output reg dest_reg_sel_out,
     output reg write_to_reg_out,
     output reg update_pc_out,
-    output reg is_jal_out
+    output reg is_jal_out,
+    output reg wm_data_bypass_out
 );
 
     always @(negedge clk) begin
@@ -66,6 +68,7 @@ module ix_im_pipleline_reg(
             write_to_reg_out = write_to_reg_in;
             update_pc_out = update_pc_in;
             is_jal_out = is_jal_in;
+            wm_data_bypass_out = wm_data_bypass_in;
         end
         else begin
             pc_out = 0;
@@ -82,6 +85,7 @@ module ix_im_pipleline_reg(
             write_to_reg_out = 0;
             update_pc_out = 0;
             is_jal_out = 0;
+            wm_data_bypass_out = 0;
         end
         stall_out = stall_in;
     end

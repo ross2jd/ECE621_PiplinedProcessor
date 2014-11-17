@@ -103,6 +103,11 @@ module processor(
     reg dec_stall_pipeline;
     reg dec_flush_pipeline;
     reg [2:0]dec_jump_counter;
+    reg dec_mx_op1_bypass;
+    reg dec_mx_op2_bypass;
+    reg dec_wx_op1_bypass;
+    reg dec_wx_op2_bypass;
+    reg dec_wm_data_bypass;
 
     // Execute wires
     wire [31:0]exe_pc; // We define this as the PC for next instruction to be executed
@@ -142,6 +147,15 @@ module processor(
     wire exe_is_jr;
     wire exe_stall_pipeline;
     wire exe_flush_pipeline;
+    wire [31:0]alu_mx_op1_bypass;
+    wire [31:0]alu_mx_op2_bypass;
+    wire [31:0]alu_op2_bypass;
+    wire [31:0]alu_op1_bypass;
+    wire mx_op1_bypass;
+    wire mx_op2_bypass;
+    wire wx_op1_bypass;
+    wire wx_op2_bypass;
+    wire exe_wm_data_bypass;
 
     // Memory wires
     wire [31:0]mem_next_pc;
@@ -165,6 +179,8 @@ module processor(
     wire mem_is_jal;
     wire mem_stall_pipeline;
     wire mem_flush_pipeline;
+    wire [31:0]mem_data_bypass;
+    wire wm_data_bypass;
 
     // Write back wires
     wire [31:0]wb_O;
@@ -301,6 +317,11 @@ module processor(
         .write_to_reg_in(dec_write_to_reg),
         .is_jal_in(dec_is_jal),
         .is_jr_in(dec_is_jr),
+        .mx_op1_bypass_in(dec_mx_op1_bypass),
+        .mx_op2_bypass_in(dec_mx_op2_bypass),
+        .wx_op1_bypass_in(dec_wx_op1_bypass),
+        .wx_op2_bypass_in(dec_wx_op2_bypass),
+        .wm_data_bypass_in(dec_wm_data_bypass),
         .stall_out(exe_stall_pipeline),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
@@ -321,7 +342,12 @@ module processor(
         .dest_reg_sel_out(exe_dest_reg_sel),
         .write_to_reg_out(exe_write_to_reg),
         .is_jal_out(exe_is_jal),
-        .is_jr_out(exe_is_jr)
+        .is_jr_out(exe_is_jr),
+        .mx_op1_bypass_out(mx_op1_bypass),
+        .mx_op2_bypass_out(mx_op2_bypass),
+        .wx_op1_bypass_out(wx_op1_bypass),
+        .wx_op2_bypass_out(wx_op2_bypass),
+        .wm_data_bypass_out(exe_wm_data_bypass)
     );
 
     sign_extender sign_extender(
@@ -336,14 +362,14 @@ module processor(
 
     // Instantiate a 32-bit mux for selecting which operand to provide to op2 of the ALU
     mux_2_1_32_bit alu_op2_sel_mux(
-        .line0(exe_B),
+        .line0(alu_op2_bypass),
         .line1(exe_extended),
         .select(exe_op2_sel),
         .output_line(exe_op2)
     );
 
     alu alu(
-        .op1(exe_A), // operand 1 (always from rs)
+        .op1(alu_op1_bypass), // operand 1 (always from rs)
         .op2(exe_op2), // operand 2
         .operation(exe_alu_op), // The arithmatic operation to perform
         .shift_amount(exe_shift_amount), // The number of bits to shift
@@ -391,6 +417,13 @@ module processor(
 
     assign exe_update_pc = exe_is_jump | exe_branch_taken | exe_is_jr;
 
+// ------------------------------ BYPASS HARDWARE -----------------------------------//
+    assign alu_mx_op1_bypass = (mx_op1_bypass) ? (mem_alu_result) : (exe_A);
+    assign alu_op1_bypass = (wx_op1_bypass) ? (reg_file_dest_val) : (alu_mx_op1_bypass);
+    assign alu_mx_op2_bypass = (mx_op2_bypass) ? (mem_alu_result) : (exe_B);
+    assign alu_op2_bypass = (wx_op2_bypass) ? (reg_file_dest_val) : (alu_mx_op2_bypass);
+    assign mem_data_bypass = (wm_data_bypass) ? (reg_file_dest_val) : (mem_reg_data);
+
 // ------------------------------ MEMORY STAGE --------------------------------------//
     
     // Instatiate the IX/IM pipeline register
@@ -410,6 +443,7 @@ module processor(
         .write_to_reg_in(exe_write_to_reg),
         .update_pc_in(exe_update_pc),
         .is_jal_in(exe_is_jal),
+        .wm_data_bypass_in(exe_wm_data_bypass),
         .stall_out(mem_stall_pipeline),
         .pc_out(mem_next_pc),
         .O_out(mem_alu_result), // This will be the R-type data to write or EA for mem
@@ -423,7 +457,8 @@ module processor(
         .dest_reg_sel_out(mem_dest_reg_sel),
         .write_to_reg_out(mem_write_to_reg),
         .update_pc_out(mem_update_pc),
-        .is_jal_out(mem_is_jal)
+        .is_jal_out(mem_is_jal),
+        .wm_data_bypass_out(wm_data_bypass)
     );
 
     // We have some muxes here to write the data memory during SREC parsing
@@ -434,7 +469,7 @@ module processor(
         .output_line(mem_addr_in)
     );
     mux_2_1_32_bit srec_data_data_mux(
-        .line0(mem_reg_data),
+        .line0(mem_data_bypass),
         .line1(srec_data_in),
         .select(srec_parse),
         .output_line(mem_data_in)
@@ -558,6 +593,11 @@ module processor(
             dec_is_jr = 0;
             dec_reg_source0_stall = 0;
             dec_reg_source1_stall = 0;
+            dec_mx_op1_bypass = 0;
+            dec_mx_op2_bypass = 0;
+            dec_wx_op1_bypass = 0;
+            dec_wx_op2_bypass = 0;
+            dec_wm_data_bypass = 0;
             if (((opcode & 6'b111000)>> 3) == 3'h0) begin
                 if ((opcode & 6'b000111) == 3'h0) begin
                     // We are in the SPECIAL Opcode encoding table

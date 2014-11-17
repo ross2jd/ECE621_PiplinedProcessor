@@ -45,6 +45,11 @@ module id_ix_pipleline_reg(
     input write_to_reg_in,
     input is_jal_in,
     input is_jr_in,
+    input mx_op1_bypass_in,
+    input mx_op2_bypass_in,
+    input wx_op1_bypass_in,
+    input wx_op2_bypass_in,
+    input wm_data_bypass_in,
     output reg stall_out,
     output reg [31:0]pc_out,
     output reg [31:0]ir_out,
@@ -65,7 +70,12 @@ module id_ix_pipleline_reg(
     output reg dest_reg_sel_out,
     output reg write_to_reg_out,
     output reg is_jal_out,
-    output reg is_jr_out
+    output reg is_jr_out,
+    output reg mx_op1_bypass_out,
+    output reg mx_op2_bypass_out,
+    output reg wx_op1_bypass_out,
+    output reg wx_op2_bypass_out,
+    output reg wm_data_bypass_out
 );
 
     always @(negedge clk) begin
@@ -91,6 +101,11 @@ module id_ix_pipleline_reg(
             write_to_reg_out = write_to_reg_in;
             is_jal_out = is_jal_in;
             is_jr_out = is_jr_in;
+            mx_op1_bypass_out = mx_op1_bypass_in;
+            mx_op2_bypass_out = mx_op2_bypass_in;
+            wx_op1_bypass_out = wx_op1_bypass_in;
+            wx_op2_bypass_out = wx_op2_bypass_in;
+            wm_data_bypass_out = wm_data_bypass_in;
         end else begin
             pc_out = 0;
             ir_out = 0;
@@ -112,6 +127,11 @@ module id_ix_pipleline_reg(
             write_to_reg_out = 0;
             is_jal_out = 0;
             is_jr_out = 0;
+            mx_op1_bypass_out = 0;
+            mx_op2_bypass_out = 0;
+            wx_op1_bypass_out = 0;
+            wx_op2_bypass_out = 0;
+            wm_data_bypass_out = 0;
         end
         stall_out = stall_in;
     end
