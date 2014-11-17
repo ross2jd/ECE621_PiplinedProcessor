@@ -108,15 +108,14 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_up
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_is_jal
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_file_write_enable
 
-#run 46400 ns
 # SimpleAdd start of execution
-run 45500 ns
+#run 45500 ns
 # SimpleAdd end of execution - unpipeline
 #run 54200 ns
 # SimpleAdd end of execution - pipelined (no forwarding)
 #run 48500 ns
-
-#run 97700 ns
+# SimpleAdd end of execution - pipelined (with forwarding)
+#run 47700 ns
 
 # SumArray start of execution
 #run 94300 ns
@@ -124,6 +123,8 @@ run 45500 ns
 #run 226000 ns
 # SumArray end of execution - pipelined (no forwarding)
 #run 158500 ns
+# SumArray end of execution - pipelined (with forwarding)
+#run 133400 ns
 
 # SimpleIf start of execution
 #run 72200 ns
@@ -131,6 +132,8 @@ run 45500 ns
 #run 85400 ns
 # SimpleIf end of execution - pipelined (no forwarding)
 #run 77100 ns
+# SimpleIf end of execution - pipelined (with forwarding)
+#run 75600 ns
 
 # SwapShift start of execution
 #run 122900 ns
@@ -138,6 +141,8 @@ run 45500 ns
 #run 150600 ns
 # SwapShift end of execution - pipelined (no forwarding)
 #run 133900 ns
+# SwapShift end of execution - pipelined (with forwarding)
+#run 130400 ns
 
 # CheckVowel start of execution
 #run 224200 ns
@@ -145,6 +150,8 @@ run 45500 ns
 #run 845400 ns
 # CheckVowel end of execution - pipelined (no forwarding)
 #run 485800 ns
+# CheckVowel end of execution - pipelined (with forwarding)
+#run 379700 ns
 
 # Bubble sort start of execution
 #run 218000 ns
@@ -152,3 +159,5 @@ run 45500 ns
 #run 814700 ns
 # Bubble sort end of execution - pipelined (no forwarding)
 #run 492400 ns
+# Bubble sort end of execution - pipelined (with forwarding)
+#run 393300 ns
