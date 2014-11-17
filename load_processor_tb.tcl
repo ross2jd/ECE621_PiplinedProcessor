@@ -19,6 +19,14 @@ add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec
 add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_is_jump
 add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_jump_counter
 add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/next_insn_is_nop
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_is_load
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/exe_is_load
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_mx_op1_bypass
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_mx_op2_bypass
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_wx_op1_bypass
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_wx_op2_bypass
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/dec_wm_data_bypass
+add wave -position insertpoint -color purple sim:/processor_tb/processor_uut/debug_signal_path_taken
 
 #TEST
 add wave -position insertpoint -color orange sim:/processor_tb/processor_uut/reg_file/dest
@@ -36,7 +44,8 @@ add wave -position insertpoint -color plum sim:/processor_tb/processor_uut/fetch
 
 # Decode Stage (Cyan)
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/decode_pc
-#add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/fetch_ir
+add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/pre_fetch_ir
+add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/fetch_ir
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/decode_ir
 add wave -position insertpoint -radix unsigned -color cyan sim:/processor_tb/processor_uut/rs
 add wave -position insertpoint -radix unsigned -color cyan sim:/processor_tb/processor_uut/rt
@@ -47,11 +56,13 @@ add wave -position insertpoint -radix decimal -color cyan sim:/processor_tb/proc
 add wave -position insertpoint -color cyan sim:/processor_tb/processor_uut/dec_illegal_insn
 
 # Execute Stage (Green)
-add wave -position insertpoint -radix decimal -color green sim:/processor_tb/processor_uut/exe_A
-add wave -position insertpoint -radix decimal -color green sim:/processor_tb/processor_uut/exe_B
-add wave -position insertpoint -radix decimal -color green sim:/processor_tb/processor_uut/exe_extended
-add wave -position insertpoint -radix decimal -color green sim:/processor_tb/processor_uut/exe_op2
-add wave -position insertpoint -radix decimal -color green sim:/processor_tb/processor_uut/exe_O
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_A
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_B
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_extended
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_op2
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/alu_op1_bypass
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/alu_op2_bypass
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_O
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_zero
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_neg
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_alu_op
@@ -74,7 +85,8 @@ add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_
 # add wave -position insertpoint -color green sim:/processor_tb/processor_uut/branch_resolve/is_branch
 
 # Memory Stage (Coral)
-add wave -position insertpoint -radix decimal -color coral sim:/processor_tb/processor_uut/mem_data_in
+add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_reg_data
+add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_data_in
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_addr_in
 add wave -position insertpoint -radix decimal -color coral sim:/processor_tb/processor_uut/mem_alu_result
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/wb_D
@@ -96,9 +108,9 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_up
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_is_jal
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_file_write_enable
 
-
+#run 46400 ns
 # SimpleAdd start of execution
-#run 45500 ns
+run 45500 ns
 # SimpleAdd end of execution - unpipeline
 #run 54200 ns
 # SimpleAdd end of execution - pipelined (no forwarding)
@@ -139,4 +151,4 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 #Bubble sort end of exectuion - unpipeline
 #run 814700 ns
 # Bubble sort end of execution - pipelined (no forwarding)
-run 492400 ns
+#run 492400 ns

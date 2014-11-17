@@ -50,6 +50,7 @@ module id_ix_pipleline_reg(
     input wx_op1_bypass_in,
     input wx_op2_bypass_in,
     input wm_data_bypass_in,
+    input is_load_in,
     output reg stall_out,
     output reg [31:0]pc_out,
     output reg [31:0]ir_out,
@@ -75,7 +76,8 @@ module id_ix_pipleline_reg(
     output reg mx_op2_bypass_out,
     output reg wx_op1_bypass_out,
     output reg wx_op2_bypass_out,
-    output reg wm_data_bypass_out
+    output reg wm_data_bypass_out,
+    output reg is_load_out
 );
 
     always @(negedge clk) begin
@@ -106,6 +108,7 @@ module id_ix_pipleline_reg(
             wx_op1_bypass_out = wx_op1_bypass_in;
             wx_op2_bypass_out = wx_op2_bypass_in;
             wm_data_bypass_out = wm_data_bypass_in;
+            is_load_out = is_load_in;
         end else begin
             pc_out = 0;
             ir_out = 0;
@@ -132,6 +135,7 @@ module id_ix_pipleline_reg(
             wx_op1_bypass_out = 0;
             wx_op2_bypass_out = 0;
             wm_data_bypass_out = 0;
+            is_load_out = 0;
         end
         stall_out = stall_in;
     end

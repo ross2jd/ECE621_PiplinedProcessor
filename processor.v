@@ -108,6 +108,8 @@ module processor(
     reg dec_wx_op1_bypass;
     reg dec_wx_op2_bypass;
     reg dec_wm_data_bypass;
+    reg dec_is_load;
+    reg [3:0]debug_signal_path_taken;
 
     // Execute wires
     wire [31:0]exe_pc; // We define this as the PC for next instruction to be executed
@@ -156,6 +158,7 @@ module processor(
     wire wx_op1_bypass;
     wire wx_op2_bypass;
     wire exe_wm_data_bypass;
+    wire exe_is_load;
 
     // Memory wires
     wire [31:0]mem_next_pc;
@@ -275,7 +278,7 @@ module processor(
     decode decoder(
         .clk(clk),
         .stall(stall),
-        .insn_in(fetch_ir),
+        .insn_in(decode_ir),
         //.pc_in(pc), // TODO: I don't see what this is needed
         .rs(rs),
         .rt(rt),
@@ -322,6 +325,7 @@ module processor(
         .wx_op1_bypass_in(dec_wx_op1_bypass),
         .wx_op2_bypass_in(dec_wx_op2_bypass),
         .wm_data_bypass_in(dec_wm_data_bypass),
+        .is_load_in(dec_is_load),
         .stall_out(exe_stall_pipeline),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
@@ -347,7 +351,8 @@ module processor(
         .mx_op2_bypass_out(mx_op2_bypass),
         .wx_op1_bypass_out(wx_op1_bypass),
         .wx_op2_bypass_out(wx_op2_bypass),
-        .wm_data_bypass_out(exe_wm_data_bypass)
+        .wm_data_bypass_out(exe_wm_data_bypass),
+        .is_load_out(exe_is_load)
     );
 
     sign_extender sign_extender(
@@ -432,7 +437,7 @@ module processor(
         .stall_in(exe_stall_pipeline),
         .pc_in(exe_next_pc),
         .O_in(exe_O),
-        .B_in(exe_B),
+        .B_in(alu_op2_bypass),
         .access_size_in(exe_access_size),
         .rw_in(exe_rw),
         .memory_sign_extend_in(exe_memory_sign_extend),
@@ -572,6 +577,11 @@ module processor(
     always @(posedge clk) begin
         flush = 0; // TODO: implement when branching
         reg_file_write_enable = 0;
+        dec_mx_op1_bypass = 0;
+        dec_mx_op2_bypass = 0;
+        dec_wx_op1_bypass = 0;
+        dec_wx_op2_bypass = 0;
+        dec_wm_data_bypass = 0;
         if (srec_parse == 0 && stall == 0) begin
             next_pipe_state = 3'b010;
             // ----------- Decode Stage Control Signal Logic --------------------------- //
@@ -598,6 +608,8 @@ module processor(
             dec_wx_op1_bypass = 0;
             dec_wx_op2_bypass = 0;
             dec_wm_data_bypass = 0;
+            dec_is_load = 0;
+            debug_signal_path_taken = 0;
             if (((opcode & 6'b111000)>> 3) == 3'h0) begin
                 if ((opcode & 6'b000111) == 3'h0) begin
                     // We are in the SPECIAL Opcode encoding table
@@ -720,6 +732,7 @@ module processor(
                 dec_op2_sel = 1;
                 dec_alu_op = 0; // We want to add the value of rs to the immediate
                 dec_res_data_sel = 1;
+                dec_is_load = 1;
                 case (opcode)
                     6'b100000 : begin 
                         dec_access_size = 0; //LB
@@ -770,21 +783,34 @@ module processor(
             exe_dest_reg_stall = (exe_dest_reg_sel) ? (exe_rt) : (exe_rd);
             mem_dest_reg_stall = (mem_dest_reg_sel) ? (mem_rt) : (mem_rd);
             if (decode_pc > 32'h80020004) begin // Hack to not mess up first fetch
-                if (dec_reg_source0_stall == exe_dest_reg_stall && dec_reg_source0_stall != 0) begin
+                stall = 0;
+                if (dec_reg_source0_stall == exe_dest_reg_stall && dec_reg_source0_stall != 0 && exe_is_load != 0) begin
+                    //if (exe_is_load == 1'b1) begin // If the instruction ahead of us is a load and we need its value then we should stall for a cycle
                     stall = 1;
-                    fetch.pc = pc;
+                    //fetch.pc = pc;
                 end
-                else if (dec_reg_source0_stall == mem_dest_reg_stall && dec_reg_source0_stall != 0) begin
-                    stall = 1;
-                    fetch.pc = pc;
+                if (dec_reg_source0_stall == exe_dest_reg_stall && dec_reg_source0_stall != 0 && exe_is_load == 0) begin
+                    dec_mx_op1_bypass = 1;
                 end
-                else if (dec_reg_source1_stall == exe_dest_reg_stall && dec_reg_source1_stall != 0) begin
-                    stall = 1;
-                    fetch.pc = pc;
+                if (dec_reg_source0_stall == mem_dest_reg_stall && dec_reg_source0_stall != 0 && dec_mx_op1_bypass == 0) begin
+                    dec_wx_op1_bypass = 1;
+                    //stall = 1;
+                    //fetch.pc = pc;
+                    debug_signal_path_taken = 2;
                 end
-                else if (dec_reg_source1_stall == mem_dest_reg_stall && dec_reg_source1_stall != 0) begin
+                if (dec_reg_source1_stall == exe_dest_reg_stall && dec_reg_source1_stall != 0 && exe_is_load != 0) begin
+                    //if (exe_is_load == 1'b1) begin // If the instruction ahead of us is a load and we need its value then we should stall for a cycle
                     stall = 1;
-                    fetch.pc = pc;
+                    //fetch.pc = pc;
+                end
+                if (dec_reg_source1_stall == exe_dest_reg_stall && dec_reg_source1_stall != 0 && exe_is_load == 0) begin
+                    dec_mx_op2_bypass = 1;
+                end
+                if (dec_reg_source1_stall == mem_dest_reg_stall && dec_reg_source1_stall != 0 && dec_mx_op2_bypass == 0) begin
+                    dec_wx_op2_bypass = 1;
+                    debug_signal_path_taken = 4;
+                    //stall = 1;
+                    //fetch.pc = pc;
                 end
                 // else if (dec_is_jump || dec_jump_counter != 0) begin
                 //     if (dec_jump_counter == 0) begin
@@ -800,9 +826,9 @@ module processor(
                 //         stall = 0;
                 //     end
                 // end
-                else begin
-                    stall = 0;
-                end
+                // else begin
+                //     stall = 0;
+                // end
             end
             // ---------------------- BRANCH FLUSH LOGIC --------------------------- //
             if (exe_branch_taken == 1'b1 || exe_is_jump == 1'b1 || mem_is_jal == 1'b1) begin
@@ -815,7 +841,7 @@ module processor(
         end
     end
 
-    always @(decode_pc) begin
+    always @(fetch.pc) begin
         if (srec_parse == 0 && stall == 0) begin
             // If we don't have a stall we want to update the decode_ir
             decode_ir = fetch_ir;
