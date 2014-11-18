@@ -39,13 +39,12 @@ module fetch(
         next_pc = pc + 4;
     end
     always @(negedge clk_in) begin
-        // On the negative edge we will update the pc if we don't have a stall.
-        //next_pc = pc + 4;
+        // On the negative edge we will update the pc to the next pc if we don't have a stall. We
+        // will however update the pc if we have the signal to update the pc to some input value.
         case(stall_in)
             0:  begin
                     // Increment the pc by 4 so we read the next 
-                    // instruction on the next clock cycle.
-                    //pc = pc_in; // TODO: Fix this when we pipeline!
+                    // instruction on the next clock cycle
                     if (update_pc == 1'b1)
                         pc = pc_in;
                     else begin

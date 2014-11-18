@@ -23,9 +23,6 @@ module processor(
     input clk,  // The system clock
     input srec_parse    // If the SREC parser is active or not.
 );
-    
-    reg [2:0]cur_pipe_state;
-    reg [2:0]next_pipe_state;
 
     // Decoder signals 
     wire [4:0]rs;
@@ -224,15 +221,18 @@ module processor(
         .output_line(insn_access_size)
     );
     
+    // Mux that selects if the pc should be updated based on if the update is happening in the memory or execute stage
     assign update_pc = (exe_is_jal | mem_is_jal) ? (mem_update_pc) : (exe_update_pc);
+
+    // Mux that selects the next pc based on if the new pc is read in the memory or execute stage.
     assign next_pc = (exe_is_jal | mem_is_jal) ? (mem_next_pc) : (exe_next_pc);
 
-    // Instantiate the fetch module
+    // Instantiate the fetch module to control what instruction we fetch each clock cycle.
     fetch fetch(
         .clk_in(clk),
         .stall_in(stall),
-        .pc_in(next_pc), //wb_next_pc),
-        .update_pc(update_pc), // wb_update_pc),
+        .pc_in(next_pc),
+        .update_pc(update_pc),
         .pc_out(pc),
         .next_pc(fetch_next_pc),
         .rw_out(fetch_rw),
@@ -240,10 +240,13 @@ module processor(
     );
     
     // Instantiate the instruction memory module
+    //  - We pass the read instruction directly to the decode stage instead of latching it in
+    //    the pipeline register since the read from memory wont be done until the end of the
+    //    clock cycle.
     memory insn_memory(
         .data_out(pre_fetch_ir),
         .address(insn_address),
-        .data_in(srec_data_in), // We can tie the srec_data_in wire to this port since we should never be writing to instruction memory unless we are srec parsing
+        .data_in(srec_data_in), // We can tie the srec_data_in wire to this port since we never write to insn memory during processor execution
         .write(insn_rw),
         .clk(clk),
 		.access_size(insn_access_size)
@@ -255,31 +258,31 @@ module processor(
     if_id_pipleline_reg if_id_pipleline_reg(
         .clk(clk),
         .pc_in(fetch_next_pc),
-        //.ir_in(insn_data_out), // We don't need to latch the ir because it won't be available until next clock cycle
         .pc_out(decode_pc)
-        //.ir_out(decode_ir)
     );
 
     // Instantiate the register file
+    //    - The source ports will be read from in the decode stage.
+    //    - The destination port will be wrote to in the writeback stage if the write_enable is high.
     reg_file reg_file(
         .clk(clk),
-        .write_enable(reg_file_write_enable),//reg_file_write_enable),
+        .write_enable(reg_file_write_enable),
         .source1(rs),
         .source2(rt),
-        .dest(reg_file_dest_reg),//dest_reg),
-        .destVal(reg_file_dest_val), //wb_data),
+        .dest(reg_file_dest_reg),
+        .destVal(reg_file_dest_val),
         .s1val(dec_A),
         .s2val(dec_B)
     );
 
+    // Mux to select whether to give the decode IR a NOP or the instruction at the current PC.
+    // This is used when we are branching and jumping.
     assign fetch_ir = (next_insn_is_nop) ? (32'h0) : (pre_fetch_ir);
     
-    // Instantiate the decode module
+    // Instantiate the decode module that will split the instruction in the instruction fields
+    // to be used in the later stages and control.
     decode decoder(
-        .clk(clk),
-        .stall(stall),
         .insn_in(decode_ir),
-        //.pc_in(pc), // TODO: I don't see what this is needed
         .rs(rs),
         .rt(rt),
         .rd(rd),
@@ -287,15 +290,19 @@ module processor(
         .func(func),
         .immed(immed),
         .target(target),
-        .opcode(opcode),
-        //.pc_out(pc_out), // TODO: I don't see why this is needed
-        .insn_out(insn_out)
+        .opcode(opcode)
     );
 
 // ------------------------------ EXECUTE STAGE --------------------------------------//
+
+    // Simple or gate to set the flush signal high if we have a branch or a jump in the pipeline.
     assign exe_flush_pipeline = exe_branch_taken | exe_is_jump;
     
     // Instatiate the ID/IX pipeline register
+    //  - This pipeline register is very large because we are setting pretty much all of our
+    //    control signals for the instruction as it goes through the pipeline in the decode
+    //    stage so we need to propogate the control through.
+    //  - The pipeline register will output a NOP if either the stall or flush signal is high.
     id_ix_pipleline_reg id_ix_pipleline_reg(
         .clk(clk),
         .stall_in(stall),
@@ -355,17 +362,24 @@ module processor(
         .is_load_out(exe_is_load)
     );
 
+    // Instantiate the sign extender module to extend the immediate portion of the IR to 32 bits.
     sign_extender sign_extender(
         .in_data(exe_ir[15:0]),
         .out_data(exe_extended)
     );
 
+    // Split the bits our for the target field of the IR.
     assign exe_shift_target = exe_ir[25:0];
+    // Calculate the effective address for a jump by taking the target value and shifting it by 2 then
+    // concatenating it with the upper 4 bits of the PC.
     assign exe_jump_effective_address = (exe_pc & 32'hf0000000) | ((exe_shift_target << 2) & 32'h0fffffff);
+    // Shift the extended immediate value by 2 for branching
     assign exe_shift_immed = exe_extended << 2;
+    // Calcualte the effective address by taking the shifted sign extended immediate and adding it to PC + 4
     assign exe_branch_effective_address = exe_shift_immed + exe_pc;
 
     // Instantiate a 32-bit mux for selecting which operand to provide to op2 of the ALU
+    //  - This is selecting between the register value or the immediate value for operand 2
     mux_2_1_32_bit alu_op2_sel_mux(
         .line0(alu_op2_bypass),
         .line1(exe_extended),
@@ -373,8 +387,9 @@ module processor(
         .output_line(exe_op2)
     );
 
+    // Instantiate the ALU
     alu alu(
-        .op1(alu_op1_bypass), // operand 1 (always from rs)
+        .op1(alu_op1_bypass), // operand 1
         .op2(exe_op2), // operand 2
         .operation(exe_alu_op), // The arithmatic operation to perform
         .shift_amount(exe_shift_amount), // The number of bits to shift
@@ -391,6 +406,8 @@ module processor(
         .output_line(exe_O)
     );
 
+    // Instantiate the branch resolve unit that will determine if a branch is taken or not based
+    // on its branch type and the negative and zero values from the ALU.
     branch_resolve branch_resolve(
     	.zero(exe_zero),
 		.neg(exe_neg),
@@ -399,6 +416,8 @@ module processor(
 		.branch_taken(exe_branch_taken) // Indicates if the branch is taken or not
     );
 
+    // Instantiate a mux to select between PC+4 or the branch effective address based on whether
+    // the branch was taken or not.
     mux_2_1_32_bit branch_next_pc_mux(
         .line0(exe_pc),
         .line1(exe_branch_effective_address),
@@ -406,6 +425,8 @@ module processor(
         .output_line(exe_branch_next_pc)
     );
 
+    // Instantiate a mux to select between the previous mux (branch EA/PC+4) and the jump
+    // effective address based on if the instruction is a jump.
     mux_2_1_32_bit jump_next_pc_mux(
         .line0(exe_branch_next_pc),
         .line1(exe_jump_effective_address),
@@ -413,6 +434,9 @@ module processor(
         .output_line(exe_jump_next_pc)
     );
 
+    // Instantiate a mux that selects between taking the jump effective address calculated or
+    // the address from the alu which is the value store in $ra based on if the instruction is
+    // a jump return or not.
     mux_2_1_32_bit jump_ret_next_pc_mux(
         .line0(exe_jump_next_pc),
         .line1(exe_O),
@@ -420,9 +444,12 @@ module processor(
         .output_line(exe_next_pc)
     );
 
+    // An OR gate to set the execute update pc control signal.
     assign exe_update_pc = exe_is_jump | exe_branch_taken | exe_is_jr;
 
 // ------------------------------ BYPASS HARDWARE -----------------------------------//
+    // The following muxes are to chose between taking the value from the register file/alu result
+    // or from one of the bypass paths based on the control signal that is set.
     assign alu_mx_op1_bypass = (mx_op1_bypass) ? (mem_alu_result) : (exe_A);
     assign alu_op1_bypass = (wx_op1_bypass) ? (reg_file_dest_val) : (alu_mx_op1_bypass);
     assign alu_mx_op2_bypass = (mx_op2_bypass) ? (mem_alu_result) : (exe_B);
@@ -503,13 +530,14 @@ module processor(
     );
 
     // Instantiate the sign extender for loading half words and bytes
+    //  - We pass the data that we read from the memory directly to the writeback stage instead
+    //    of latching it in the pipeline register since the data wont be read until the end of
+    //    the clock cycle.
     memory_sign_extender memory_sign_extender(
         .in_data(mem_data_out),
         .data_size(mem_access_size),
         .sign_extend(mem_memory_sign_extend),
-        .out_data(wb_D) //.out_data(mem_sign_extend_out) TODO: This may throw some issues 
-                        //when we pipleine... It will be the same for handling the fetch 
-                        //and decode memory handoff
+        .out_data(wb_D)
     );
     
 // ------------------------------ WRITE BACK STAGE --------------------------------------//
@@ -520,7 +548,6 @@ module processor(
         .stall_in(mem_stall_pipeline),
         .pc_in(mem_next_pc),
         .O_in(mem_alu_result),
-        //.D_in(mem_sign_extend_out),
         .res_data_sel_in(mem_res_data_sel),
         .write_to_reg_in(mem_write_to_reg),
         .dest_reg_sel_in(mem_dest_reg_sel),
@@ -531,7 +558,6 @@ module processor(
         .stall_out(wb_stall_pipeline),
         .pc_out(wb_next_pc),
         .O_out(wb_O),
-        //.D_out(wb_D),
         .res_data_sel_out(wb_res_data_sel),
         .write_to_reg_out(wb_write_to_reg),
         .dest_reg_sel_out(wb_dest_reg_sel),
@@ -541,41 +567,19 @@ module processor(
         .is_jal_out(wb_is_jal)
     );
 
-    // // Mux for selecting between which data we should be writing back to the register
-    // mux_2_1_32_bit wb_data_mux(
-    //     .line0(wb_O),
-    //     .line1(wb_D),
-    //     .select(wb_res_data_sel),
-    //     .output_line(wb_data)
-    // );
-
-    // // // Instantiate a mux for selecting which destination to choose
-    // mux_2_1_5_bit dest_reg_mux(
-    //     .line0(wb_rd),
-    //     .line1(wb_rt),
-    //     .select(wb_dest_reg_sel),
-    //     .output_line(wb_dest_reg)
-    // );
-
-    // Instantiate a mux for selecting between the destination register in the previous
-    // mux or selecting the return address register (31) if we have a JAL
-    // mux_2_1_5_bit sel_ra_reg_mux(
-    //     .line0(wb_dest_reg),
-    //     .line1(5'd31),
-    //     .select(wb_is_jal),
-    //     .output_line(dest_reg)
-    // );
-
+    // A mux to select which source of data it should chose to write back based on control
     assign wb_data = (wb_res_data_sel) ? (wb_D) : (wb_O);
+    // A mux to select which destination register to select based on control
     assign wb_dest_reg = (wb_dest_reg_sel) ? (wb_rt) : (wb_rd);
+    // A mux to select if to chose the previously set destination register or $ra based on
+    // if we have a JAL instruction.
     assign dest_reg = (wb_is_jal) ? (5'd31) : (wb_dest_reg);
 
-    //assign dest_reg = (wb_dest_reg_sel) ? (wb_rd) : (wb_rt)
-
-
-    // Control
+// --------------------------- Control -------------------------------------------------//
+    // Here is where we do all of our control on the clock cycles. These are the control signals
+    // that we are setting based on some inputs.
     always @(posedge clk) begin
-        flush = 0; // TODO: implement when branching
+        flush = 0;
         reg_file_write_enable = 0;
         dec_mx_op1_bypass = 0;
         dec_mx_op2_bypass = 0;
@@ -583,8 +587,12 @@ module processor(
         dec_wx_op2_bypass = 0;
         dec_wm_data_bypass = 0;
         if (srec_parse == 0 && stall == 0) begin
-            next_pipe_state = 3'b010;
-            // ----------- Decode Stage Control Signal Logic --------------------------- //
+            // ----------- ----Decode Stage Control Signal Logic --------------------------- //
+            // Here is the meat of our control logic. This is where we determine which instruction
+            // we have just fetched and then set as much control for this instruction as we can
+            // so that it control can be pipelined through the registers.
+
+            // Initial values for the control signals.
             dec_illegal_insn = 0;
             dec_dest_reg_sel = 0;
             dec_alu_op = 0;
@@ -610,6 +618,8 @@ module processor(
             dec_wm_data_bypass = 0;
             dec_is_load = 0;
             debug_signal_path_taken = 0;
+
+            // Control logic basedo on instruction fetched.
             if (((opcode & 6'b111000)>> 3) == 3'h0) begin
                 if ((opcode & 6'b000111) == 3'h0) begin
                     // We are in the SPECIAL Opcode encoding table
@@ -638,7 +648,6 @@ module processor(
                     else if (func == 6'b000011) begin // SRA
                         dec_alu_op = 11;
                         dec_shift_amount = sha;
-                        dec_illegal_insn = 1;
                         dec_reg_source0_stall = 0; // In a shift operation we only use second operand
                     end
                     else if (func == 6'b101010 || func == 6'b101011) begin// SLT, SLTU
@@ -648,7 +657,7 @@ module processor(
                         dec_rt = 0;
                         dec_alu_op = 0; // Essentially just get the return register as the execution output by ading it with the zero reg
                         dec_is_jr = 1;
-                        dec_is_jump = 1; // TODO: Check back here if this causes problems
+                        dec_is_jump = 1;
                         dec_write_to_reg = 0;
                         dec_reg_source0_stall = 0;
                         dec_reg_source1_stall = 0;
@@ -689,15 +698,11 @@ module processor(
                         dec_reg_source1_stall = rt;
                     end else if (opcode == 6'b000110) begin
                         // BLEZ
-                        // TODO: Test that rt has zero in it
-                        dec_illegal_insn = 1;
                         dec_alu_op = 0;
                         dec_branch_type = 2;
                         dec_reg_source0_stall = rs;
                     end else begin
                         // BGTZ
-                        // TODO: Test that rt has zero in it
-                        dec_illegal_insn = 1;
                         dec_alu_op = 0;
                         dec_branch_type = 3;
                         dec_reg_source0_stall = rs;
@@ -777,59 +782,41 @@ module processor(
             dec_reg_source1_stall = 0;
             dec_jump_counter = 0;
         end
+
+
         if (srec_parse == 0) begin
             // ----------------------- RAW STALL LOGIC ------------------------------- //
+            // This where we will test the registers that our instruction will need based on the
+            // registers that the instructions currently in the pipeline are using. The forwarding
+            // signals will be set here as well as signaling for stalls if need be.
+
             // Get the destination register for the instruction in execution
             exe_dest_reg_stall = (exe_dest_reg_sel) ? (exe_rt) : (exe_rd);
             mem_dest_reg_stall = (mem_dest_reg_sel) ? (mem_rt) : (mem_rd);
-            if (decode_pc > 32'h80020004) begin // Hack to not mess up first fetch
-                stall = 0;
+            if (decode_pc > 32'h80020004) begin // We don't want any of this logic being set for the first instruction
+                stall = 0; // Reset the stall to zero so we don't stall forever
                 if (dec_reg_source0_stall == exe_dest_reg_stall && dec_reg_source0_stall != 0 && exe_is_load != 0) begin
-                    //if (exe_is_load == 1'b1) begin // If the instruction ahead of us is a load and we need its value then we should stall for a cycle
+                    // We have a load-use stall here
                     stall = 1;
-                    //fetch.pc = pc;
                 end
                 if (dec_reg_source0_stall == exe_dest_reg_stall && dec_reg_source0_stall != 0 && exe_is_load == 0) begin
                     dec_mx_op1_bypass = 1;
                 end
                 if (dec_reg_source0_stall == mem_dest_reg_stall && dec_reg_source0_stall != 0 && dec_mx_op1_bypass == 0) begin
                     dec_wx_op1_bypass = 1;
-                    //stall = 1;
-                    //fetch.pc = pc;
-                    debug_signal_path_taken = 2;
                 end
                 if (dec_reg_source1_stall == exe_dest_reg_stall && dec_reg_source1_stall != 0 && exe_is_load != 0) begin
-                    //if (exe_is_load == 1'b1) begin // If the instruction ahead of us is a load and we need its value then we should stall for a cycle
+                    // We have a load-use stall here
                     stall = 1;
-                    //fetch.pc = pc;
                 end
                 if (dec_reg_source1_stall == exe_dest_reg_stall && dec_reg_source1_stall != 0 && exe_is_load == 0) begin
                     dec_mx_op2_bypass = 1;
                 end
                 if (dec_reg_source1_stall == mem_dest_reg_stall && dec_reg_source1_stall != 0 && dec_mx_op2_bypass == 0) begin
                     dec_wx_op2_bypass = 1;
-                    debug_signal_path_taken = 4;
-                    //stall = 1;
-                    //fetch.pc = pc;
                 end
-                // else if (dec_is_jump || dec_jump_counter != 0) begin
-                //     if (dec_jump_counter == 0) begin
-                //         stall = 0; // We want to stall the instruction after the jump
-                //         dec_jump_counter = dec_jump_counter + 1;
-                //     end
-                //     else if (dec_jump_counter <= 3) begin
-                //         dec_jump_counter = dec_jump_counter + 1;
-                //         stall = 1;
-                //         fetch.pc = pc;
-                //     end else begin
-                //         dec_jump_counter = 0;
-                //         stall = 0;
-                //     end
-                // end
-                // else begin
-                //     stall = 0;
-                // end
             end
+
             // ---------------------- BRANCH FLUSH LOGIC --------------------------- //
             if (exe_branch_taken == 1'b1 || exe_is_jump == 1'b1 || mem_is_jal == 1'b1) begin
                 // If we have a taken branch we want the fetched instruction to be a NOP.
@@ -841,7 +828,9 @@ module processor(
         end
     end
 
-    always @(fetch.pc) begin
+    // Control to not update the decode IR if we have a stall since we have already started
+    // reading the instruction from memory by the time we stall.
+    always @(fetch.pc) begin // We want be sensitive the the fetch.pc
         if (srec_parse == 0 && stall == 0) begin
             // If we don't have a stall we want to update the decode_ir
             decode_ir = fetch_ir;
@@ -849,22 +838,11 @@ module processor(
         if (exe_branch_taken == 1'b1) begin
             decode_ir = 32'b0;
         end
-        // if (srec_parse == 0) begin
-        //     cur_pipe_state = next_pipe_state;
-        //     // case (cur_pipe_state)
-        //     //     3'b100 : begin
-        //     //         // ----------------- WRITE BACK CONTROL LOGIC -------------------------------- //
-        //     //         if (wb_write_to_reg == 1) begin
-        //     //             // We need to write the the register so we should set the read write enable and
-        //     //             // select the destination reigster then feed the data to the input port.
-        //     //             reg_file_write_enable = 1;
-        //     //         end
-        //     //     end
-        //     // endcase
-        // end
     end
+
+    // Control to select whether we should be updating the register file or not.
     always @(dest_reg or wb_data or wb_write_to_reg) begin
-        if (wb_write_to_reg == 1'b1) begin // TODO: Might be a problem here?
+        if (wb_write_to_reg == 1'b1) begin
             reg_file_write_enable = 1;
             reg_file_dest_reg = dest_reg;
             reg_file_dest_val = wb_data;

@@ -68,8 +68,6 @@ module reg_file(
 				5'd31 : register[31] = destVal;
 				default : register[0] = 0;
 			endcase
-			//register[dest] = destVal;
-			//register[0] = 0; // r0 is always 0
 		end
 	end
 
