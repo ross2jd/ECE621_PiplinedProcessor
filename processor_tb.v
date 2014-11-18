@@ -310,6 +310,7 @@ module processor_tb;
         //processor_uut.stall = 1;
         // processor_uut.cur_pipe_state = 3'b100;
         // processor_uut.next_pipe_state = 3'b000;
+        $stop;
         #100;
         processor_uut.stall = 0;
         //#100;
@@ -487,7 +488,10 @@ module processor_tb;
         processor_uut.stall = 1;
         processor_uut.fetch.pc = 32'h80020000;
         $strobe("Program done running!");
-        
+        $strobe("The contents of $r2 = %h", processor_uut.reg_file.register[2]);
+        $strobe("The contents of $r3 = %h", processor_uut.reg_file.register[3]);
+        #200;
+        $stop;
     end
     
 	always begin
