@@ -82,7 +82,7 @@ module processor(
     reg dec_is_branch;
     reg dec_op2_sel;
     reg [5:0] dec_shift_amount;
-    reg [1:0]dec_branch_type; // 0-BEQ, 1-BNE, 2-BLEZ, 3-BGTZ
+    reg [2:0]dec_branch_type; // 0-BEQ, 1-BNE, 2-BLEZ, 3-BGTZ
     reg dec_is_jump;
     reg [1:0]dec_access_size;
     reg dec_rw;
@@ -126,7 +126,7 @@ module processor(
     wire [31:0] exe_jump_effective_address;
     wire [31:0] exe_branch_effective_address;
     wire exe_neg;
-    wire [1:0]exe_branch_type;
+    wire [2:0]exe_branch_type;
     wire exe_branch_taken;
     wire [31:0]exe_next_pc;
     wire [31:0]exe_branch_next_pc;
@@ -156,6 +156,7 @@ module processor(
     wire wx_op2_bypass;
     wire exe_wm_data_bypass;
     wire exe_is_load;
+    wire [31:0]exe_cur_pc;
 
     // Memory wires
     wire [31:0]mem_next_pc;
@@ -333,6 +334,7 @@ module processor(
         .wx_op2_bypass_in(dec_wx_op2_bypass),
         .wm_data_bypass_in(dec_wm_data_bypass),
         .is_load_in(dec_is_load),
+        .cur_pc_in(insn_address),
         .stall_out(exe_stall_pipeline),
         .pc_out(exe_pc),
         .ir_out(exe_ir),
@@ -359,7 +361,8 @@ module processor(
         .wx_op1_bypass_out(wx_op1_bypass),
         .wx_op2_bypass_out(wx_op2_bypass),
         .wm_data_bypass_out(exe_wm_data_bypass),
-        .is_load_out(exe_is_load)
+        .is_load_out(exe_is_load),
+        .cur_pc_out(exe_cur_pc)
     );
 
     // Instantiate the sign extender module to extend the immediate portion of the IR to 32 bits.
@@ -376,7 +379,7 @@ module processor(
     // Shift the extended immediate value by 2 for branching
     assign exe_shift_immed = exe_extended << 2;
     // Calcualte the effective address by taking the shifted sign extended immediate and adding it to PC + 4
-    assign exe_branch_effective_address = exe_shift_immed + exe_pc;
+    assign exe_branch_effective_address = exe_shift_immed + exe_cur_pc;
 
     // Instantiate a 32-bit mux for selecting which operand to provide to op2 of the ALU
     //  - This is selecting between the register value or the immediate value for operand 2
@@ -645,6 +648,9 @@ module processor(
                         dec_shift_amount = sha;
                         dec_reg_source0_stall = 0; // In a shift operation we only use second operand
                     end
+                    else if (func == 6'b000100) begin // SLLV
+                        dec_alu_op = 13;
+                    end
                     else if (func == 6'b000011) begin // SRA
                         dec_alu_op = 11;
                         dec_shift_amount = sha;
@@ -664,7 +670,7 @@ module processor(
                     end
                     else begin
                         dec_illegal_insn = 1;
-                    end
+                    end                 
                 end else if (((opcode & 6'b000111)  == 3'd2) || ((opcode & 6'b000111) == 3'd3)) begin
                     // J and JAL instructions
                     // This is J-type instruction
@@ -701,6 +707,14 @@ module processor(
                         dec_alu_op = 0;
                         dec_branch_type = 2;
                         dec_reg_source0_stall = rs;
+                    end else if (opcode == 6'b000001 && rt == 5'b00001) begin
+                        // BGEZ
+                        dec_alu_op = 0; // We want to do a test if the result is zero from a subtract
+                        dec_rt = 0;
+                        dec_branch_type = 4;
+                        dec_reg_source0_stall = rs;
+                        dec_reg_source1_stall = 0;
+                        dec_illegal_insn = 1;
                     end else begin
                         // BGTZ
                         dec_alu_op = 0;
@@ -726,9 +740,15 @@ module processor(
                 dec_dest_reg_sel = 1;
                 dec_op2_sel = 1; // We want op2 to be the immediate in the ALU
             end else if (((opcode & 6'b111000)>> 3) == 3'd3) begin
-                // No idea?
                 dec_dest_reg_sel = 0;
-                dec_illegal_insn = 1;
+                dec_reg_source0_stall = rs;
+                dec_reg_source1_stall = rt;
+                if (func == 6'b000010 && opcode == 6'b011100) begin// MUL
+                    dec_alu_op = 2; // Do an multiply operation
+                end
+                else begin
+                    dec_illegal_insn = 1;
+                end
             end else if (((opcode & 6'b111000)>> 3) == 3'd4) begin
                 // LB, LH, LWL, LW, LBU, LHU, LWR
                 // This is an I-type instruction

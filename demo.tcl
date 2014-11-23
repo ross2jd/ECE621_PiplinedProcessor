@@ -5,6 +5,7 @@ vsim -gui work.processor_tb
 # Clock & SREC Parser Signal(Yellow)
 add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/clk
 add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/srec_parse
+add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/dec_illegal_insn
 
 # Fetch Stage (Plum) - Data Lines
 add wave -position insertpoint -color plum -group Fetch -label PC sim:/processor_tb/processor_uut/pc

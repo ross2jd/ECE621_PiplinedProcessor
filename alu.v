@@ -24,8 +24,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 module alu(
-	input [31:0] op1, // operand 1 (always from rs)
-	input [31:0] op2, // operand 2
+	input signed [31:0] op1, // operand 1 (always from rs)
+	input signed [31:0] op2, // operand 2
 	input [5:0] operation, // The arithmatic operation to perform
 	input [5:0] shift_amount, // The number of bits to shift
 	output reg [31:0] result, // The arithmatic result based on the operation
@@ -60,13 +60,16 @@ module alu(
 			end
 			4: result = op2 << shift_amount;
 			5: result = op2 >> shift_amount;
-			6: result = op1 < op2 ? 1 : 0;
+			6: begin
+				result = op1 < op2 ? 1 : 0;
+			end
 			7: result = op1 & op2;
 			8: result = op1 | op2;
 			9: result = op1 ^ op2;
 			10: result = ~(op1 | op2);
 			11: result = op2 >>> shift_amount;
 			12: result = (op2 << 16)&32'hffff0000;
+			13: result = op2 << op1;
 		endcase
 		zero = result == 0 ? 1 : 0;
 		neg = result[31];

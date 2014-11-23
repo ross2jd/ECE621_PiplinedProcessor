@@ -34,7 +34,7 @@ module id_ix_pipleline_reg(
     input is_jump_in,
     input op2_sel_in,
     input [5:0]shift_amount_in,
-    input [1:0]branch_type_in,
+    input [2:0]branch_type_in,
     input [1:0]access_size_in,
     input rw_in,
     input memory_sign_extend_in,
@@ -51,6 +51,7 @@ module id_ix_pipleline_reg(
     input wx_op2_bypass_in,
     input wm_data_bypass_in,
     input is_load_in,
+    input [31:0]cur_pc_in,
     output reg stall_out,
     output reg [31:0]pc_out,
     output reg [31:0]ir_out,
@@ -61,7 +62,7 @@ module id_ix_pipleline_reg(
     output reg is_jump_out,
     output reg op2_sel_out,
     output reg [5:0]shift_amount_out,
-    output reg [1:0]branch_type_out,
+    output reg [2:0]branch_type_out,
     output reg [1:0]access_size_out,
     output reg rw_out,
     output reg memory_sign_extend_out,
@@ -77,7 +78,8 @@ module id_ix_pipleline_reg(
     output reg wx_op1_bypass_out,
     output reg wx_op2_bypass_out,
     output reg wm_data_bypass_out,
-    output reg is_load_out
+    output reg is_load_out,
+    output reg [31:0]cur_pc_out
 );
 
     always @(negedge clk) begin
@@ -109,6 +111,7 @@ module id_ix_pipleline_reg(
             wx_op2_bypass_out = wx_op2_bypass_in;
             wm_data_bypass_out = wm_data_bypass_in;
             is_load_out = is_load_in;
+            cur_pc_out = cur_pc_in;
         end else begin
             pc_out = 0;
             ir_out = 0;
@@ -136,6 +139,7 @@ module id_ix_pipleline_reg(
             wx_op2_bypass_out = 0;
             wm_data_bypass_out = 0;
             is_load_out = 0;
+            cur_pc_out = 0;
         end
         stall_out = stall_in;
     end

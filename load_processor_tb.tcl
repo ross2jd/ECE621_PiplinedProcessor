@@ -5,7 +5,7 @@ vsim -gui work.processor_tb
 # Clock & Counter(Yellow)
 add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/clk
 add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/srec_parse
-add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/cur_pipe_state
+# add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/cur_pipe_state
 #add wave -position insertpoint -color yellow sim:/processor_tb/processor_uut/next_pipe_state
 
 # Stall Signals (Purple)
@@ -78,6 +78,7 @@ add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_next_pc
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_update_pc
 add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_is_jr
+add wave -position insertpoint -color green sim:/processor_tb/processor_uut/exe_cur_pc
 # add wave -position insertpoint -color green sim:/processor_tb/processor_uut/branch_resolve/branch_taken
 # add wave -position insertpoint -color green sim:/processor_tb/processor_uut/branch_resolve/zero
 # add wave -position insertpoint -color green sim:/processor_tb/processor_uut/branch_resolve/neg
@@ -94,6 +95,7 @@ add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_rw
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_next_pc
 add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_update_pc
+add wave -position insertpoint -color coral sim:/processor_tb/processor_uut/mem_data_out
 
 # Write back stage (Blue)
 add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/wb_res_data_sel
@@ -161,3 +163,5 @@ add wave -position insertpoint -color blue sim:/processor_tb/processor_uut/reg_f
 #run 492400 ns
 # Bubble sort end of execution - pipelined (with forwarding)
 #run 393300 ns
+
+run 349000 ns

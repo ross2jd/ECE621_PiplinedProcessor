@@ -24,7 +24,7 @@ module memory_sign_extender(
 	output reg [31:0] out_data
 );
 	always @(in_data or data_size or sign_extend) begin
-		if (data_size == 2 && sign_extend) begin
+		if (data_size == 0 && sign_extend) begin
 			out_data[31:0] <= { {24{in_data[7]}}, in_data[7:0] };
 		end
 		else if (data_size == 1 && sign_extend) begin

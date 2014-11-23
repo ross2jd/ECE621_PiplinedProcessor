@@ -60,8 +60,8 @@ module processor_tb;
         $monitor("Starting the SREC parser...");
         
         // Open the SREC file to read
-        fh = $fopen("D:/Git_Repositories/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
-        //fh = $fopen("D:/GitHub/ECE621_PiplinedProcessor/SimpleAdd.srec", "r");
+        //fh = $fopen("D:/Git_Repositories/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
+        fh = $fopen("D:/GitHub/ECE621_PiplinedProcessor/Doom621.srec", "r");
         //fh = $fopen("D:/Dropbox/Grad/01 Fall14/ECE621/Labs/L1/code/ECE621_PiplinedProcessor/BubbleSort.srec", "r");
         // Start the clock high
 		clk = 0;
@@ -271,7 +271,7 @@ module processor_tb;
         for (i=0; i <32; i=i+1) begin
             if (i == 29) begin
             	// Initialize the stack pointer to be a large number of bytes from the memory start
-            	processor_uut.reg_file.register[i] = 32'h80020300;
+            	processor_uut.reg_file.register[i] = 32'h8002FF00;
             end else begin
             	processor_uut.reg_file.register[i] = 0;
             end
@@ -378,7 +378,7 @@ module processor_tb;
                         end
                         default: begin 
                             $strobe("ERROR! %h:    %h", processor_uut.pc_out, processor_uut.decode_ir);
-                            $stop;
+                            //$stop;
                         end
                         endcase
                     end

@@ -42,10 +42,12 @@ module memory(
             if (access_size == 'b01) begin //16 bit access
                 data_out[7:0] = memory[(address-offset) + 1];
                 data_out[15:8] = memory[(address-offset)];
+                data_out[31:16] = 0;
             end
             
             if (access_size == 'b00) begin //8 bit access
                 data_out[7:0] = memory[(address-offset)];
+                data_out[31:8] = 0;
             end
         end
 	end
